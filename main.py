@@ -9,7 +9,7 @@ from acktr import algo, utils
 from acktr.utils import get_possible_position, get_rotation_mask
 from acktr.envs import make_vec_envs
 from acktr.arguments import get_args
-from acktr.model import Policy, BaselineNetwork
+from acktr.model import Policy
 from acktr.storage import RolloutStorage
 from evaluation import evaluate
 from tensorboardX import SummaryWriter
@@ -83,12 +83,6 @@ def train_model(args):
     print("Rotation:", args.enable_rotation)
     actor_critic.to(device)
 
-    # If using Reinforce with Baseline, initialize the Baseline network
-    baseline_network = None
-    if args.reinforce:
-        obs_size = envs.observation_space.shape[0]  # Assuming flat observations
-        baseline_network = BaselineNetwork(input_size=obs_size, hidden_size=args.hidden_size)
-        baseline_network.to(device)
 
     # leave a backup for parameter tuning
     copyfile('main.py', os.path.join(data_path, 'main.py'))

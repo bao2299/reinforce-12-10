@@ -22,7 +22,7 @@ class Policy(nn.Module):
             if len(obs_shape) == 3:
                 base = CNNBase
             elif len(obs_shape) == 1:
-                base = MLPBase
+                base = CNNPro
             else:
                 raise NotImplementedError
 

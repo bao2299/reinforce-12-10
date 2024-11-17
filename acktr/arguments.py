@@ -60,7 +60,7 @@ def get_args():
         '--hidden_size', default=256, type=int,  help='hidden layer cell number (default: 256)'
     )
     parser.add_argument(
-        '--learning_rate', default=1e-6, type=float,  help='learning rate for a2c (default: 1e-6)'
+         '--lr', default=1e-6, type=float,  help='learning rate for a2c (default: 1e-6)'
     )
     parser.add_argument(
         '--eps', default=1e-5, type=float,  help='RMSprop optimizer epsilon (default: 1e-5)'
@@ -90,7 +90,7 @@ def get_args():
         '--pretrain', action='store_true', default=False,  help='load whole model'
     )
     parser.add_argument(
-        '--num_steps', default=5, type=int,  help='number of forward steps in A2C (default: 5)'
+        '--num_steps', default=150, type=int,  help='number of forward steps in A2C (default: 10)'
     )
     parser.add_argument(
         '--enable_rotation', action='store_true', default=False,  help='whether agent can rotate box'
@@ -111,7 +111,7 @@ def get_args():
         '--seed', default=1, type=int,  help='random seed (default: 1)'
     )
     parser.add_argument(
-        '--reinforce', action='store_true', default=False,
+        '--reinforce', action='store_true', default=True,
         help='Whether to use Reinforce with Baseline (default: False)'
     )
 

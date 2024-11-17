@@ -16,6 +16,9 @@ class RolloutStorage(object):
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
+         # 打印初始状态，看看这些张量在创建时的内容是什么
+        print("Initial obs:", self.obs)
+        print("Initial rewards:", self.rewards)
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
         else:
@@ -78,9 +81,15 @@ class RolloutStorage(object):
                         reinforce=False):
         if reinforce:
             # 蒙特卡洛方法：累计轨迹总回报
-            self.returns[-1] = self.rewards[-1]
-            for step in reversed(range(self.rewards.size(0) - 1)):
+            self.returns[self.step - 1] = self.rewards[self.step - 1]
+            for step in reversed(range(self.step - 1)):
                 self.returns[step] = self.rewards[step] + gamma * self.returns[step + 1]
+
+                 # 对累积回报进行标准化处理
+            valid_returns = self.returns[:self.step]  # 只对有效的部分进行标准化
+            returns_mean = valid_returns.mean()
+            returns_std = valid_returns.std() + 1e-5  # 防止标准差为0导致的除0错误
+            self.returns[:self.step] = (valid_returns - returns_mean) / returns_std
         else:
             # 原有的 TD 或 GAE 方法
             if use_proper_time_limits:

@@ -24,7 +24,8 @@ class ACKTR():
         self.actor_critic = actor_critic
         self.acktr = acktr
         self.reinforce = reinforce
-
+        # 打印 `reinforce` 的值
+        print(f"Reinforce value is: {self.reinforce}")
 
         self.value_loss_coef = value_loss_coef
         self.invaild_coef = invaild_coef
@@ -65,8 +66,24 @@ class ACKTR():
             action_loss = -(advantages.detach() * action_log_probs).mean()
         else:
             # Reinforce 损失计算：直接使用 critic 的值作为 baseline
+            '''
+
             advantages = rollouts.returns[:-1].view(-1) - values.detach()
-            action_loss = -(advantages * action_log_probs).mean()
+
+            '''
+            advantages = rollouts.returns[:-1]
+            action_loss = -(advantages.detach() * action_log_probs).mean()
+            # 单独计算并优化 critic 网络
+            
+            value_loss = self.loss_func(values, rollouts.returns[:-1].view(num_steps, num_processes, 1))
+            '''
+
+            self.optimizer.zero_grad()
+         
+            value_loss.backward(retain_graph=True)
+
+            self.optimizer.step()
+            '''
 
         # Mask-related losses
         mask_len = self.args.container_size[0] * self.args.container_size[1]
@@ -77,6 +94,24 @@ class ACKTR():
         dist_entropy = dist_entropy.mean()
         prob_loss = bad_prob.mean()
 
+        if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
+            # Sampled fisher, see Martens 2014
+            self.actor_critic.zero_grad()
+            pg_fisher_loss = -action_log_probs.mean()
+
+            value_noise = torch.randn(values.size())
+            if values.is_cuda:
+                value_noise = value_noise.cuda()
+
+            sample_values = values + value_noise
+            vf_fisher_loss = -(values - sample_values.detach()).pow(2).mean()  # detach
+
+            fisher_loss = pg_fisher_loss + vf_fisher_loss + graph_loss * 1e-8
+            # fisher_loss = pg_fisher_loss + vf_fisher_loss
+            self.optimizer.acc_stats = True
+            fisher_loss.backward(retain_graph=True)
+            self.optimizer.acc_stats = False
+
         # Optimization
         self.optimizer.zero_grad()
         loss = action_loss
@@ -84,7 +119,9 @@ class ACKTR():
         if not self.reinforce:
             loss += value_loss * self.value_loss_coef
         else:
+            '''
             loss += value_loss
+            '''
 
         loss += prob_loss * self.invaild_coef
         loss -= dist_entropy * self.entropy_coef
@@ -102,7 +139,7 @@ class ACKTR():
         Compute returns for rollouts, using Monte Carlo method if in Reinforce mode.
         """
         if self.reinforce:
-            rollouts.compute_returns(next_value, False, gamma, gae_lambda, use_proper_time_limits=True)
+            rollouts.compute_returns(next_value, False, gamma, gae_lambda, use_proper_time_limits=True, reinforce = True)
         else:
             rollouts.compute_returns(next_value, True, gamma, gae_lambda, use_proper_time_limits=True)
 

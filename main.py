@@ -29,12 +29,30 @@ def test_model(args):
     unified_test(model_url, args)
 
 def train_model(args):
+    custom = "experiment_1" 
+    '''
     custom = input('please input the test name: ')
+    '''
     time_now = time.strftime('%Y.%m.%d-%H-%M', time.localtime(time.time()))
 
     env_name = args.env_name
+    
     if args.device != 'cpu':
         torch.cuda.set_device(torch.device(args.device))
+        
+    
+    '''
+     # 确保设置正确的设备类型
+    if args.use_cuda and torch.cuda.is_available():
+        # 使用 GPU 的整数索引来设置设备
+        torch.cuda.set_device(args.device)
+        device = torch.device(f'cuda:{args.device}')
+    else:
+        # 使用 CPU 设备
+        device = torch.device('cpu')
+    '''
+
+
     # set random seed
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)

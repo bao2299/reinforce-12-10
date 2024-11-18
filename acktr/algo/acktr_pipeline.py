@@ -24,8 +24,7 @@ class ACKTR():
         self.actor_critic = actor_critic
         self.acktr = acktr
         self.reinforce = reinforce
-        # 打印 `reinforce` 的值
-        print(f"Reinforce value is: {self.reinforce}")
+
 
         self.value_loss_coef = value_loss_coef
         self.invaild_coef = invaild_coef
@@ -39,6 +38,11 @@ class ACKTR():
             self.optimizer = KFACOptimizer(actor_critic)
         else:
             self.optimizer = optim.RMSprop(actor_critic.parameters(), lr, eps=eps, alpha=alpha)
+
+        if reinforce:
+            # 为 Critic 参数单独设置优化器
+            critic_params = [p for n, p in actor_critic.named_parameters() if 'critic' in n]
+            self.critic_optimizer = optim.RMSprop(critic_params, lr=1e-3)
 
 
     def update(self, rollouts):
@@ -65,25 +69,23 @@ class ACKTR():
             value_loss = advantages.pow(2).mean()
             action_loss = -(advantages.detach() * action_log_probs).mean()
         else:
-            # Reinforce 损失计算：直接使用 critic 的值作为 baseline
-            '''
-
-            advantages = rollouts.returns[:-1].view(-1) - values.detach()
-
-            '''
+            # Reinforce 损失计算：使用回报的平均值作为baseline 这个平均回报已经在在storag的compute_return 中处理了
             advantages = rollouts.returns[:-1]
-            action_loss = -(advantages.detach() * action_log_probs).mean()
-            # 单独计算并优化 critic 网络
-            
-            value_loss = self.loss_func(values, rollouts.returns[:-1].view(num_steps, num_processes, 1))
             '''
-
-            self.optimizer.zero_grad()
-         
-            value_loss.backward(retain_graph=True)
-
-            self.optimizer.step()
+            # Reinforce 损失计算：直接使用 critic 的值作为 baseline
+            advantages = rollouts.returns[:-1].view(-1) - values.detach()
             '''
+            action_loss = -(advantages * action_log_probs).mean()
+
+            # Critic 网络的独立优化
+            critic_loss = self.loss_func(values.view(-1, 1), rollouts.returns[:-1].view(-1, 1))
+
+            self.critic_optimizer.zero_grad()
+            critic_loss.backward(retain_graph=True)
+            self.critic_optimizer.step()
+
+            # 在 reinforce 模式下，直接将 value_loss 赋值为 critic_loss
+            value_loss = critic_loss
 
         # Mask-related losses
         mask_len = self.args.container_size[0] * self.args.container_size[1]
@@ -111,17 +113,15 @@ class ACKTR():
             self.optimizer.acc_stats = True
             fisher_loss.backward(retain_graph=True)
             self.optimizer.acc_stats = False
-
         # Optimization
         self.optimizer.zero_grad()
+        
         loss = action_loss
 
         if not self.reinforce:
             loss += value_loss * self.value_loss_coef
-        else:
-            '''
-            loss += value_loss
-            '''
+        
+            
 
         loss += prob_loss * self.invaild_coef
         loss -= dist_entropy * self.entropy_coef
@@ -139,7 +139,7 @@ class ACKTR():
         Compute returns for rollouts, using Monte Carlo method if in Reinforce mode.
         """
         if self.reinforce:
-            rollouts.compute_returns(next_value, False, gamma, gae_lambda, use_proper_time_limits=True, reinforce = True)
+            rollouts.compute_returns(next_value, False, gamma, gae_lambda, use_proper_time_limits=True)
         else:
             rollouts.compute_returns(next_value, True, gamma, gae_lambda, use_proper_time_limits=True)
 

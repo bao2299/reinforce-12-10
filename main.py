@@ -4,6 +4,8 @@ import time
 from collections import deque
 import numpy as np
 import torch
+import copy
+
 from shutil import copyfile
 from acktr import algo, utils
 from acktr.utils import get_possible_position, get_rotation_mask
@@ -37,11 +39,13 @@ def train_model(args):
 
     env_name = args.env_name
     
+    
     if args.device != 'cpu':
         torch.cuda.set_device(torch.device(args.device))
-        
     
+        
     '''
+    
      # 确保设置正确的设备类型
     if args.use_cuda and torch.cuda.is_available():
         # 使用 GPU 的整数索引来设置设备
@@ -50,7 +54,8 @@ def train_model(args):
     else:
         # 使用 CPU 设备
         device = torch.device('cpu')
-    '''
+        '''
+    
 
 
     # set random seed
@@ -78,7 +83,7 @@ def train_model(args):
 
     torch.set_num_threads(1)
     device = torch.device(args.device)
-    envs = make_vec_envs(env_name, args.seed, args.num_processes, args.gamma, log_dir, device, False, args=args)
+    envs = make_vec_envs(env_name, args.seed, args.num_processes, args.gamma, log_dir, device, True, args=args)
 
     if args.pretrain:
         model_pretrained, ob_rms = torch.load(os.path.join(load_path, args.load_name))
@@ -146,6 +151,7 @@ def train_model(args):
                               pallet_size=args.container_size[0])
 
     obs = envs.reset()
+
     location_masks = []
     for observation in obs:
         if not args.enable_rotation:
@@ -158,6 +164,9 @@ def train_model(args):
     rollouts.obs[0].copy_(obs)
     rollouts.location_masks[0].copy_(location_masks)
     rollouts.to(device)
+
+    # 保存 rollouts 的副本
+    rollouts_reset = copy.deepcopy(rollouts)
 
     episode_rewards = deque(maxlen=10)
     episode_ratio = deque(maxlen=10)
@@ -174,7 +183,8 @@ def train_model(args):
     index = 0
     while True:
         j += 1
-        for step in range(args.num_steps):
+        #for step in range(args.num_steps):
+        for step in range(150):
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
@@ -200,6 +210,7 @@ def train_model(args):
             bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in info.keys() else [1.0] for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, bad_masks,
                             location_masks)
+            
 
         with torch.no_grad():
             next_value = actor_critic.get_value(
@@ -209,7 +220,10 @@ def train_model(args):
         rollouts.compute_returns(next_value, False, args.gamma, 0.95, False)
         value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts)
 
-        rollouts.after_update()
+       # rollouts = copy.deepcopy(rollouts_reset)
+        # rollouts.to(device)
+
+        #rollouts.after_update()
         if args.save_model:
             if (j % args.save_interval == 0) and args.save_dir != "":
                 torch.save([

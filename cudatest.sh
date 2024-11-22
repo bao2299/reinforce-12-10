@@ -5,8 +5,9 @@
 #SBATCH --error=error_log.txt    # 错误日志
 #SBATCH --ntasks=1               # 任务数
 #SBATCH --cpus-per-task=8        # 申请 4 个 CPU 核心
-#SBATCH --time=00:10:00          # 运行时间限制
+#SBATCH --time=00:05:00          # 运行时间限制
 #SBATCH --gres=gpu:1             # 申请一个 GPU
+#SBATCH --partition=minor
 
 
 # 初始化环境，确保 conda 可用

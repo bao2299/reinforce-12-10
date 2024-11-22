@@ -69,7 +69,7 @@ def get_args():
         '--alpha', default=0.99, type=float,  help='RMSprop optimizer apha (default: 0.99)'
     )
     parser.add_argument(
-        '--num_processes', default=4, type=int,  help='how many training CPU processes to use (default: 16)'
+        '--num_processes', default=1, type=int,  help='how many training CPU processes to use (default: 16)'
     )
     parser.add_argument(
         '--device', default=0, type=int,  help='device id (default: 0)'

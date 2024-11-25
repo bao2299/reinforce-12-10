@@ -1,0 +1,174 @@
+2024-11-25 16:48:32,181 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:32,181 - Updates 10, num timesteps 91, FPS 71
+Last 10 training episodes: mean/median reward 3.1/2.9, min/max reward 2.0/4.7
+The dist entropy 2.63061, The value loss 1.03268, the action loss 8.63513
+The mean space ratio is 0.30650000000000005
+2024-11-25 16:48:33,496 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:33,496 - Updates 20, num timesteps 189, FPS 72
+Last 10 training episodes: mean/median reward 2.9/2.7, min/max reward 1.5/4.5
+The dist entropy 2.96387, The value loss 0.24607, the action loss 10.70833
+The mean space ratio is 0.2913
+2024-11-25 16:48:34,739 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:34,739 - Updates 30, num timesteps 285, FPS 74
+Last 10 training episodes: mean/median reward 3.9/3.9, min/max reward 2.1/5.5
+The dist entropy 3.08065, The value loss 0.20505, the action loss 8.18302
+The mean space ratio is 0.3949
+2024-11-25 16:48:35,986 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:35,987 - Updates 40, num timesteps 381, FPS 74
+Last 10 training episodes: mean/median reward 2.7/3.0, min/max reward 0.8/4.3
+The dist entropy 3.04381, The value loss 0.28933, the action loss 5.73448
+The mean space ratio is 0.2694
+2024-11-25 16:48:36,984 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:36,984 - Updates 50, num timesteps 453, FPS 74
+Last 10 training episodes: mean/median reward 2.4/2.5, min/max reward 0.8/4.0
+The dist entropy 4.60501, The value loss 0.51329, the action loss 3.85557
+The mean space ratio is 0.2426
+2024-11-25 16:48:38,165 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:38,166 - Updates 60, num timesteps 542, FPS 74
+Last 10 training episodes: mean/median reward 2.7/2.6, min/max reward 1.3/4.2
+The dist entropy 3.64790, The value loss 0.73303, the action loss 5.17278
+The mean space ratio is 0.2738
+2024-11-25 16:48:39,322 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:39,322 - Updates 70, num timesteps 628, FPS 74
+Last 10 training episodes: mean/median reward 3.1/3.2, min/max reward 1.3/6.0
+The dist entropy 2.90366, The value loss 1.46840, the action loss 6.82405
+The mean space ratio is 0.3103
+2024-11-25 16:48:40,863 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:40,864 - Updates 80, num timesteps 746, FPS 74
+Last 10 training episodes: mean/median reward 3.2/3.1, min/max reward 1.6/5.3
+The dist entropy 2.31293, The value loss 0.70564, the action loss 5.45419
+The mean space ratio is 0.3236
+2024-11-25 16:48:42,128 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:42,128 - Updates 90, num timesteps 838, FPS 74
+Last 10 training episodes: mean/median reward 3.0/2.9, min/max reward 1.4/5.0
+The dist entropy 3.25971, The value loss 0.17543, the action loss 4.52748
+The mean space ratio is 0.2968
+2024-11-25 16:48:43,417 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:43,417 - Updates 100, num timesteps 935, FPS 74
+Last 10 training episodes: mean/median reward 3.2/3.3, min/max reward 2.4/3.9
+The dist entropy 2.86952, The value loss 0.40494, the action loss 5.30513
+The mean space ratio is 0.3243
+2024-11-25 16:48:44,712 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:44,712 - Updates 110, num timesteps 1031, FPS 74
+Last 10 training episodes: mean/median reward 3.2/3.8, min/max reward 0.4/4.5
+The dist entropy 3.18295, The value loss 0.21182, the action loss 5.48215
+The mean space ratio is 0.32389999999999997
+2024-11-25 16:48:45,760 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:45,761 - Updates 120, num timesteps 1108, FPS 74
+Last 10 training episodes: mean/median reward 2.6/2.2, min/max reward 0.9/5.0
+The dist entropy 3.11879, The value loss 0.23221, the action loss 4.68582
+The mean space ratio is 0.26250000000000007
+2024-11-25 16:48:47,113 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:47,113 - Updates 130, num timesteps 1210, FPS 74
+Last 10 training episodes: mean/median reward 3.0/3.3, min/max reward 0.5/4.6
+The dist entropy 3.62870, The value loss 0.20642, the action loss 3.87516
+The mean space ratio is 0.3016
+2024-11-25 16:48:48,369 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:48,369 - Updates 140, num timesteps 1306, FPS 74
+Last 10 training episodes: mean/median reward 3.0/3.2, min/max reward 1.5/4.4
+The dist entropy 2.50404, The value loss 0.64590, the action loss 4.09593
+The mean space ratio is 0.3035
+2024-11-25 16:48:49,532 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:49,532 - Updates 150, num timesteps 1394, FPS 74
+Last 10 training episodes: mean/median reward 2.6/2.4, min/max reward 1.0/4.4
+The dist entropy 2.93274, The value loss 0.17614, the action loss 4.12021
+The mean space ratio is 0.25610000000000005
+2024-11-25 16:48:50,761 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:50,762 - Updates 160, num timesteps 1489, FPS 74
+Last 10 training episodes: mean/median reward 2.9/2.5, min/max reward 0.7/6.0
+The dist entropy 3.35773, The value loss 0.42516, the action loss 3.49060
+The mean space ratio is 0.28890000000000005
+2024-11-25 16:48:52,150 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:52,151 - Updates 170, num timesteps 1595, FPS 75
+Last 10 training episodes: mean/median reward 3.3/3.3, min/max reward 1.8/5.2
+The dist entropy 3.59320, The value loss 0.30701, the action loss 2.66960
+The mean space ratio is 0.3265
+2024-11-25 16:48:53,485 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:53,485 - Updates 180, num timesteps 1699, FPS 75
+Last 10 training episodes: mean/median reward 3.3/3.3, min/max reward 0.5/5.8
+The dist entropy 3.29500, The value loss 0.49864, the action loss 2.76921
+The mean space ratio is 0.32619999999999993
+2024-11-25 16:48:54,689 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:54,689 - Updates 190, num timesteps 1789, FPS 75
+Last 10 training episodes: mean/median reward 2.7/2.3, min/max reward 1.6/4.2
+The dist entropy 2.25939, The value loss 0.50974, the action loss 3.37882
+The mean space ratio is 0.2686
+2024-11-25 16:48:56,011 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:56,011 - Updates 200, num timesteps 1889, FPS 75
+Last 10 training episodes: mean/median reward 3.3/3.3, min/max reward 1.5/6.2
+The dist entropy 2.19043, The value loss 0.06808, the action loss 4.39099
+The mean space ratio is 0.3333
+2024-11-25 16:48:57,384 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:57,384 - Updates 210, num timesteps 1991, FPS 75
+Last 10 training episodes: mean/median reward 3.0/2.6, min/max reward 1.5/5.3
+The dist entropy 3.00621, The value loss 0.28906, the action loss 3.18129
+The mean space ratio is 0.29650000000000004
+2024-11-25 16:48:58,417 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:58,417 - Updates 220, num timesteps 2068, FPS 75
+Last 10 training episodes: mean/median reward 2.6/2.8, min/max reward 0.8/4.2
+The dist entropy 3.20274, The value loss 0.49671, the action loss 2.22163
+The mean space ratio is 0.26380000000000003
+2024-11-25 16:48:59,742 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:48:59,742 - Updates 230, num timesteps 2172, FPS 75
+Last 10 training episodes: mean/median reward 3.2/3.1, min/max reward 0.9/5.8
+The dist entropy 2.45679, The value loss 0.27229, the action loss 3.70049
+The mean space ratio is 0.32460000000000006
+2024-11-25 16:49:01,161 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:49:01,161 - Updates 240, num timesteps 2284, FPS 75
+Last 10 training episodes: mean/median reward 3.8/4.2, min/max reward 2.1/5.3
+The dist entropy 2.30914, The value loss 0.76284, the action loss 2.04642
+The mean space ratio is 0.3829
+2024-11-25 16:49:02,382 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:49:02,382 - Updates 250, num timesteps 2379, FPS 75
+Last 10 training episodes: mean/median reward 3.4/3.1, min/max reward 1.9/5.9
+The dist entropy 3.50330, The value loss 0.14406, the action loss 2.89574
+The mean space ratio is 0.3442
+2024-11-25 16:49:03,683 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:49:03,683 - Updates 260, num timesteps 2480, FPS 75
+Last 10 training episodes: mean/median reward 3.5/4.0, min/max reward 0.9/5.8
+The dist entropy 2.48117, The value loss 0.34209, the action loss 3.10477
+The mean space ratio is 0.346
+2024-11-25 16:49:04,995 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:49:04,995 - Updates 270, num timesteps 2581, FPS 75
+Last 10 training episodes: mean/median reward 3.0/3.1, min/max reward 1.2/5.8
+The dist entropy 2.72886, The value loss 0.31240, the action loss 2.71497
+The mean space ratio is 0.3014
+2024-11-25 16:49:06,288 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:49:06,288 - Updates 280, num timesteps 2681, FPS 75
+Last 10 training episodes: mean/median reward 3.3/3.1, min/max reward 1.9/4.8
+The dist entropy 2.69255, The value loss 0.19201, the action loss 2.59088
+The mean space ratio is 0.3349
+2024-11-25 16:49:07,397 - The algorithm is a2c, the recurrent policy is False
+The env is Bpp-v0, the version is 2experiment_2
+2024-11-25 16:49:07,398 - Updates 290, num timesteps 2762, FPS 75
+Last 10 training episodes: mean/median reward 2.3/1.9, min/max reward 1.3/4.7
+The dist entropy 2.96734, The value loss 0.73988, the action loss 3.38757
+The mean space ratio is 0.23220000000000002

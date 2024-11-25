@@ -45,7 +45,7 @@ def get_args():
         '--algorithm', default='a2c', type=str,  help='algorithm used, acktr|ppo|a2c'
     )
     parser.add_argument(
-        '--gamma', default=1.0, type=float,  help='discount factor for rewards (default: 1.0)'
+        '--gamma', default=1, type=float,  help='discount factor for rewards (default: 1.0)'
     )
     parser.add_argument(
         '--entropy_coef', default=0.01, type=float,  help='entropy term coefficient (default: 0.01)'
@@ -75,7 +75,7 @@ def get_args():
         '--device', default=0, type=int,  help='device id (default: 0)'
     )
     parser.add_argument(
-        '--save_interval', default=10, type=int,  help='save interval, one save per n updates (default: 100)'
+        '--save_interval', default=100, type=int,  help='save interval, one save per n updates (default: 100)'
     )
     parser.add_argument(
         '--log_interval', default=10, type=int,  help='log interval, one log per n updates (default: 10)'

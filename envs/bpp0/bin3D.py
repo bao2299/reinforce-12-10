@@ -93,6 +93,7 @@ class PackingGame(gym.Env):
         return action_mask
 
     def step(self, action):
+        #print("PackingGame step called")
         if isinstance(action, np.ndarray) or isinstance(action, list):
             idx = action[0]
         else:

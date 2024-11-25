@@ -5,6 +5,10 @@ from collections import deque
 import numpy as np
 import torch
 import copy
+import logging
+import os
+
+import numpy as np
 
 from shutil import copyfile
 from acktr import algo, utils
@@ -31,6 +35,28 @@ def test_model(args):
     unified_test(model_url, args)
 
 def train_model(args):
+
+
+    # 初始化日志目录和文件路径
+    log_dir = os.path.join(os.getcwd(), "consolelogs")  # 当前目录下的 logs 文件夹
+    log_file = os.path.join(log_dir, "1consoleout.log")  # 日志文件路径
+
+    # 自动创建日志目录（如果不存在）
+    os.makedirs(log_dir, exist_ok=True)
+
+
+        # 配置日志记录
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),  # 写入日志文件
+            logging.StreamHandler()  # 输出到控制台
+        ]
+    )
+
+
+
     custom = "2experiment_2" 
     time_now = time.strftime('%Y.%m.%d-%H-%M', time.localtime(time.time()))
     env_name = args.env_name
@@ -148,7 +174,7 @@ def train_model(args):
     j = 0
     index = 0
     total_step =0 
-    while j<50000:
+    while j<100000:
         j += 1
         for step in range(150):
             with torch.no_grad():
@@ -158,10 +184,6 @@ def train_model(args):
 
             location_masks = []
             obs, reward, done, infos = envs.step(action)
-             # 打印返回值，确认接收到的观测值、奖励、done 标志和信息
-            #print(f"main-received - Step {step}:")
-            #print(f"obs = {obs}")
-            
             for i in range(len(infos)):
                 if 'episode' in infos[i].keys():
                     episode_rewards.append(infos[i]['episode']['r'])
@@ -181,7 +203,7 @@ def train_model(args):
             total_step = total_step + 1
             
             if done == True:
-                exit()
+               
                 break
                 
                 
@@ -193,33 +215,36 @@ def train_model(args):
 
         rollouts.compute_returns(next_value, False, args.gamma, 0.95, False)
         value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts)
+        
         print('第j次更细',j)
-        # 退出程序（可选）
+        rollouts.after_update1()
+        print("rollot.setp:",rollouts.step)
+        # 退出程序
         # exit()
 
         # 重新初始化 rollouts
-        rollouts = RolloutStorage(args.num_steps,
-                                  args.num_processes,
-                                  envs.observation_space.shape,
-                                  envs.action_space,
-                                  actor_critic.recurrent_hidden_state_size,
-                                  can_give_up=False,
-                                  enable_rotation=args.enable_rotation,
-                                  pallet_size=args.container_size[0])
+        # rollouts = RolloutStorage(args.num_steps,
+        #                           args.num_processes,
+        #                           envs.observation_space.shape,
+        #                           envs.action_space,
+        #                           actor_critic.recurrent_hidden_state_size,
+        #                           can_give_up=False,
+        #                           enable_rotation=args.enable_rotation,
+        #                           pallet_size=args.container_size[0])
        
-        location_masks = []
-        obs = envs.reset()
-        for observation in obs:
-            if not args.enable_rotation:
-                box_mask = get_possible_position(observation, args.container_size)
-            else:
-                box_mask = get_rotation_mask(observation, args.container_size)
-            location_masks.append(box_mask)
-        location_masks = torch.FloatTensor(location_masks).to(device)
+        # location_masks = []
+        # obs = envs.reset()
+        # for observation in obs:
+        #     if not args.enable_rotation:
+        #         box_mask = get_possible_position(observation, args.container_size)
+        #     else:
+        #         box_mask = get_rotation_mask(observation, args.container_size)
+        #     location_masks.append(box_mask)
+        # location_masks = torch.FloatTensor(location_masks).to(device)
 
-        rollouts.obs[0].copy_(obs)
-        rollouts.location_masks[0].copy_(location_masks)
-        rollouts.to(device)
+        # rollouts.obs[0].copy_(obs)
+        # rollouts.location_masks[0].copy_(location_masks)
+        # rollouts.to(device)
 
         if args.save_model:
             if (j % args.save_interval == 0) and args.save_dir != "":
@@ -233,20 +258,33 @@ def train_model(args):
             total_num_steps = total_step
             end = time.time()
             index += 1
-            print(
+
+
+            log_info_1 = (
                 "The algorithm is {}, the recurrent policy is {}\nThe env is {}, the version is {}".format(
-                    args.algorithm, False, env_name, custom))
-            print(
-                "Updates {}, num timesteps {}, FPS {} \n"
+                    args.algorithm, False, env_name, custom
+                )
+            )
+            log_info_2 = (
+                "Updates {}, num timesteps {}, FPS {}\n"
                 "Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 "The dist entropy {:.5f}, The value loss {:.5f}, the action loss {:.5f}\n"
-                "The mean space ratio is {}\n"
-                .format(j, total_num_steps,
-                        int(total_num_steps / (end - start)),
-                        len(episode_rewards), np.mean(episode_rewards),
-                        np.median(episode_rewards), np.min(episode_rewards),
-                        np.max(episode_rewards), dist_entropy, value_loss,
-                        action_loss, np.mean(episode_ratio)))
+                "The mean space ratio is {}".format(
+                    j, total_num_steps, int(total_num_steps / (end - start)),
+                    len(episode_rewards), np.mean(episode_rewards),
+                    np.median(episode_rewards), np.min(episode_rewards),
+                    np.max(episode_rewards), dist_entropy, value_loss,
+                    action_loss, np.mean(episode_ratio)
+                )
+            )
+
+            # 打印到控制台和日志文件
+            logging.info(log_info_1)
+            logging.info(log_info_2)
+
+
+
+
 
             if args.tensorboard:
                 writer.add_scalar('The average rewards', np.mean(episode_rewards), j)

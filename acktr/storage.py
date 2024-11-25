@@ -14,11 +14,14 @@ class RolloutStorage(object):
             num_steps + 1, num_processes, recurrent_hidden_state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
-        self.returns = torch.zeros(num_steps + 1, num_processes, 1)
+        # self.returns = torch.zeros(num_steps + 1, num_processes, 1)
+        self.returns = torch.zeros(num_steps+1 , num_processes, 1)
+
+
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
          # 打印初始状态，看看这些张量在创建时的内容是什么
-        print("Initial obs:", self.obs)
-        print("Initial rewards:", self.rewards)
+        #print("Initial obs:", self.obs)
+        #print("Initial rewards:", self.rewards)
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
         else:
@@ -63,7 +66,8 @@ class RolloutStorage(object):
         self.masks[self.step + 1].copy_(masks)
         self.bad_masks[self.step + 1].copy_(bad_masks)
         self.location_masks[self.step + 1].copy_(location_masks)
-        self.step = (self.step + 1) % self.num_steps
+        #self.step = (self.step + 1) % self.num_steps
+        self.step = (self.step + 1)
 
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])
@@ -71,6 +75,18 @@ class RolloutStorage(object):
         self.masks[0].copy_(self.masks[-1])
         self.bad_masks[0].copy_(self.bad_masks[-1])
         self.location_masks[0].copy_(self.location_masks[-1])
+    
+    def after_update1(self):
+        self.obs[0].copy_(self.obs[-1])
+        self.recurrent_hidden_states[0].copy_(self.recurrent_hidden_states[-1])
+        
+        # Reset masks[0] and bad_masks[0] to their initialized values (1)
+        self.masks[0].fill_(1.0)
+        self.bad_masks[0].fill_(1.0)
+        
+        self.location_masks[0].copy_(self.location_masks[-1])
+        self.step = 0
+
 
     def compute_returns(self,
                         next_value,
@@ -78,13 +94,21 @@ class RolloutStorage(object):
                         gamma,
                         gae_lambda,
                         use_proper_time_limits=True,
-                        reinforce=False):
+                        reinforce=True): # 这里一定要改成true 如果想用reinforce算法的话
         if reinforce:
             # 蒙特卡洛方法：累计轨迹总回报
+            print('查看每条轨迹走了多少步')
+            print(self.step)
             self.returns[self.step - 1] = self.rewards[self.step - 1]
-            for step in reversed(range(self.step - 1)):
-                self.returns[step] = self.rewards[step] + gamma * self.returns[step + 1]
 
+            #for step in reversed(range(self.step - 1)):
+        # 如果 bad_masks 为 0.0，说明该状态不应对未来回报有影响
+                #self.returns[step] = (self.rewards[step] + gamma * self.returns[step + 1]) * self.bad_masks[step]
+
+            # 从倒数第二个时间步开始反向遍历，使用 range(self.step - 2, -1, -1)
+            for step in range(self.step - 2, -1, -1):
+        # 累计当前时间步的折扣回报
+                self.returns[step] = self.rewards[step] + gamma * self.returns[step + 1]
                  # 对累积回报进行标准化处理
             valid_returns = self.returns[:self.step]  # 只对有效的部分进行标准化
             returns_mean = valid_returns.mean()

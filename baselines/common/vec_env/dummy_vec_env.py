@@ -44,14 +44,19 @@ class DummyVecEnv(VecEnv):
 
     def step_wait(self):
         for e in range(self.num_envs):
+            #print("step_wait called, executing actions:")
             action = self.actions[e]
             # if isinstance(self.envs[e].action_space, spaces.Discrete):
             #    action = int(action)
 
             obs, self.buf_rews[e], self.buf_dones[e], self.buf_infos[e] = self.envs[e].step(action)
+            #print("recevive step_wait called, executing actions:")
+            #print(f"After step() - Environment {e}: obs = {obs}, done = {self.buf_dones[e]}")
             if self.buf_dones[e]:
                 obs = self.envs[e].reset()
+                #print(f"After reset() - Environment {e}: obs = {obs}")
             self._save_obs(e, obs)
+            #print(f"Saved observation for Environment {e}: obs = {obs}")
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones),
                 self.buf_infos.copy())
 

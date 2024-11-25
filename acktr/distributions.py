@@ -17,6 +17,15 @@ FixedCategorical = torch.distributions.Categorical
 
 old_sample = FixedCategorical.sample
 FixedCategorical.sample = lambda self: old_sample(self).unsqueeze(-1)
+# old_sample = FixedCategorical.sample
+# FixedCategorical.sample = lambda self: (
+#     torch.multinomial(
+#         torch.clamp(self.probs, min=0) / torch.clamp(self.probs, min=0).sum(dim=-1, keepdim=True),
+#         1
+#     )
+# )
+
+
 
 log_prob_cat = FixedCategorical.log_prob
 FixedCategorical.log_probs = lambda self, actions: log_prob_cat(
@@ -67,7 +76,7 @@ class Categorical(nn.Module):
                                gain=0.01)
 
         self.linear = init_(nn.Linear(num_inputs, num_outputs))
-
+    
     def forward(self, x, mask):
         x = self.linear(x)
 
@@ -99,6 +108,48 @@ class Categorical(nn.Module):
         # dx = -dx
 
         return fat_cat, bx, dx
+    
+
+    # def forward(self, x, mask):
+    #     x = self.linear(x)
+
+    #     # 对 logits 进行裁剪，确保数值在合理范围内，避免极大或极小值
+    #     x = torch.clamp(x, min=-1e2, max=1e2)  # 调整裁剪范围，防止极端值
+
+    #     p_ones = torch.ones_like(x)
+    #     ones = torch.ones_like(mask)
+    #     inver_mask = ones - mask
+
+    #     # 在计算 softmax 之前减去最大值，增加数值稳定性
+    #     x = x - x.max(dim=-1, keepdim=True)[0]
+    #     lx = F.softmax(x - inver_mask * 14, dim=-1)
+    #     lx = lx + 1e-5
+
+    #     # 确保 lx 中的概率值是合法的
+    #     lx[lx != lx] = 0  # 将 NaN 替换为 0
+    #     lx = torch.clamp(lx, min=0)  # 裁剪负值
+    #     if (lx.sum(dim=-1) == 0).any():
+    #         lx = lx + 1e-8  # 确保概率之和不为 0
+    #     lx = lx / lx.sum(dim=-1, keepdim=True)  # 归一化概率分布
+
+    #     # branch 2
+    #     # choose vaild actions
+    #     fat_cat = FixedCategorical(probs=lx)
+
+    #         # branch 1
+    #     # minimaze invaild actions
+    #     ax = F.softmax(x, dim=-1)
+    #     bx = ax * inver_mask
+
+    # # branch 3
+    # # magnify vaild actions dist_entropy
+    #     dx = mask_softmax(x, mask) + 1e-12
+    #     dx = dx * torch.log(dx)
+    #     dx = dx * mask
+    #     dx = -dx
+
+    #     return fat_cat, bx, dx
+
 
     def get_policy_distribution(self, x):
         x = self.linear(x)

@@ -13,6 +13,7 @@ from acktr.envs import make_vec_envs
 from acktr.arguments import get_args
 from acktr.model import Policy
 from acktr.storage import RolloutStorage
+from acktr.DYRolloutStorage import DynamicRolloutStorage
 from evaluation import evaluate
 from tensorboardX import SummaryWriter
 from unified_test import unified_test
@@ -112,7 +113,7 @@ def train_model(args):
         )
 
     # 初始化 RolloutStorage
-    rollouts = RolloutStorage(args.num_steps,
+    rollouts = DynamicRolloutStorage(
                               args.num_processes,
                               envs.observation_space.shape,
                               envs.action_space,
@@ -148,7 +149,7 @@ def train_model(args):
     j = 0
     index = 0
     total_step =0 
-    while j<50000:
+    while True:
         j += 1
         for step in range(150):
             with torch.no_grad():
@@ -158,10 +159,6 @@ def train_model(args):
 
             location_masks = []
             obs, reward, done, infos = envs.step(action)
-             # 打印返回值，确认接收到的观测值、奖励、done 标志和信息
-            #print(f"main-received - Step {step}:")
-            #print(f"obs = {obs}")
-            
             for i in range(len(infos)):
                 if 'episode' in infos[i].keys():
                     episode_rewards.append(infos[i]['episode']['r'])
@@ -181,9 +178,7 @@ def train_model(args):
             total_step = total_step + 1
             
             if done == True:
-                exit()
                 break
-                
                 
 
         with torch.no_grad():
@@ -193,12 +188,10 @@ def train_model(args):
 
         rollouts.compute_returns(next_value, False, args.gamma, 0.95, False)
         value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts)
-        print('第j次更细',j)
-        # 退出程序（可选）
-        # exit()
+        print("第j次更新",j)
 
         # 重新初始化 rollouts
-        rollouts = RolloutStorage(args.num_steps,
+        rollouts = DynamicRolloutStorage(
                                   args.num_processes,
                                   envs.observation_space.shape,
                                   envs.action_space,
@@ -206,9 +199,8 @@ def train_model(args):
                                   can_give_up=False,
                                   enable_rotation=args.enable_rotation,
                                   pallet_size=args.container_size[0])
-       
-        location_masks = []
         obs = envs.reset()
+        location_masks = []
         for observation in obs:
             if not args.enable_rotation:
                 box_mask = get_possible_position(observation, args.container_size)

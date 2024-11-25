@@ -46,11 +46,25 @@ class ACKTR():
 
 
     def update(self, rollouts):
+        '''
         obs_shape = rollouts.obs.size()[2:]
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
         mask_size = rollouts.location_masks.size()[-1]
+        '''
 
+         # 如果步数太少，则跳过更新
+        if rollouts.step <= 1:
+            print(f"!!!Skipping update: 当前_num_steps = {rollouts.step}")
+            return 0, 0, 0, 0, 0  # 返回默认的损失值
+
+        obs_shape = rollouts.obs[:rollouts.step +1].size()[2:]
+        action_shape = rollouts.actions[:rollouts.step ].size()[-1]
+        num_steps, num_processes, _ = rollouts.rewards[:rollouts.step].size()
+        mask_size = rollouts.location_masks[:rollouts.step+1 ].size()[-1]
+
+
+        '''
         # Evaluate actions
         values, action_log_probs, dist_entropy, _, bad_prob, pred_mask = self.actor_critic.evaluate_actions(
             rollouts.obs[:-1].view(-1, *obs_shape),
@@ -59,8 +73,26 @@ class ACKTR():
             rollouts.actions.view(-1, action_shape),
             rollouts.location_masks[:-1].view(-1, mask_size)
         )
+        '''
 
-        values = values.view(num_steps, num_processes, 1)
+        # 当前的步数
+        #current_num_steps = rollouts.step-1
+
+        # Evaluate actions，使用动态的 rollouts.step 来进行切片和重整形
+        values, action_log_probs, dist_entropy, _, bad_prob, pred_mask = self.actor_critic.evaluate_actions(
+            rollouts.obs[:rollouts.step  ].view(-1, *obs_shape),  # 获取从 step 0 到当前步数的所有观测值
+            rollouts.recurrent_hidden_states[0].view(-1, self.actor_critic.recurrent_hidden_state_size),  # 只取初始隐藏状态
+            rollouts.masks[:rollouts.step ].view(-1, 1),  # 获取从 step 0 到当前步数的所有 masks
+            rollouts.actions[:rollouts.step].view(-1, action_shape),  # 获取从 step 0 到当前步数的所有 actions
+            rollouts.location_masks[:rollouts.step ].view(-1, mask_size)  # 获取从 step 0 到当前步数的所有 location_masks
+)
+        # 打印返回的 values 和其他张量的大小
+        # print("Values shape:", values.size())
+        # print("Action log probs shape:", action_log_probs.size())
+        # print("Dist entropy shape:", dist_entropy.size())
+        # print("Pred mask shape:", pred_mask.size())
+
+        values = values.view(rollouts.step, num_processes, 1)
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         if not self.reinforce:
@@ -70,7 +102,8 @@ class ACKTR():
             action_loss = -(advantages.detach() * action_log_probs).mean()
         else:
             # Reinforce 损失计算：使用回报的平均值作为baseline 这个平均回报已经在在storag的compute_return 中处理了
-            advantages = rollouts.returns[:-1]
+            #advantages = rollouts.returns[:-1]
+            advantages = rollouts.returns[:rollouts.step]
             '''
             # Reinforce 损失计算：直接使用 critic 的值作为 baseline
             advantages = rollouts.returns[:-1].view(-1) - values.detach()
@@ -78,7 +111,8 @@ class ACKTR():
             action_loss = -(advantages * action_log_probs).mean()
 
             # Critic 网络的独立优化
-            critic_loss = self.loss_func(values.view(-1, 1), rollouts.returns[:-1].view(-1, 1))
+            #critic_loss = self.loss_func(values.view(-1, 1), rollouts.returns[:-1].view(-1, 1))
+            critic_loss = self.loss_func(values.view(-1, 1), rollouts.returns[:rollouts.step].view(-1, 1))
 
             self.critic_optimizer.zero_grad()
             critic_loss.backward(retain_graph=True)
@@ -90,8 +124,13 @@ class ACKTR():
         # Mask-related losses
         mask_len = self.args.container_size[0] * self.args.container_size[1]
         mask_len = mask_len * (1 + self.args.enable_rotation)
-        pred_mask = pred_mask.reshape((num_steps, num_processes, mask_len))
-        mask_truth = rollouts.location_masks[0:num_steps]
+        #pred_mask = pred_mask.reshape((num_steps, num_processes, mask_len))
+        # 修改 pred_mask 的形状，使用动态的步数
+        pred_mask = pred_mask.reshape((rollouts.step, num_processes, mask_len))
+        #mask_truth = rollouts.location_masks[0:num_steps]
+        # 获取对应步数的 location_masks，确保与 pred_mask 的大小一致
+        mask_truth = rollouts.location_masks[0:rollouts.step]
+
         graph_loss = self.loss_func(pred_mask, mask_truth)
         dist_entropy = dist_entropy.mean()
         prob_loss = bad_prob.mean()

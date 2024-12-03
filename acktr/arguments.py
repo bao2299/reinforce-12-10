@@ -48,13 +48,13 @@ def get_args():
         '--gamma', default=1, type=float,  help='discount factor for rewards (default: 1.0)'
     )
     parser.add_argument(
-        '--entropy_coef', default=0.01, type=float,  help='entropy term coefficient (default: 0.01)'
+        '--entropy_coef', default=0.004, type=float,  help='entropy term coefficient (default: 0.01)'
     )
     parser.add_argument(
         '--value_loss_coef', default=0.5, type=float,  help='value loss coefficient (default: 0.5)'
     )
     parser.add_argument(
-        '--invalid_coef', default=2, type=float,  help='invalid action possibility term coefficient'
+        '--invalid_coef', default=1.5, type=float,  help='invalid action possibility term coefficient'
     )
     parser.add_argument(
         '--hidden_size', default=256, type=int,  help='hidden layer cell number (default: 256)'
@@ -69,7 +69,7 @@ def get_args():
         '--alpha', default=0.99, type=float,  help='RMSprop optimizer apha (default: 0.99)'
     )
     parser.add_argument(
-        '--num_processes', default=1, type=int,  help='how many training CPU processes to use (default: 16)'
+        '--num_processes', default=4, type=int,  help='how many training CPU processes to use (default: 16)'
     )
     parser.add_argument(
         '--device', default=0, type=int,  help='device id (default: 0)'
@@ -90,7 +90,7 @@ def get_args():
         '--pretrain', action='store_true', default=False,  help='load whole model'
     )
     parser.add_argument(
-        '--num_steps', default=150, type=int,  help='number of forward steps in A2C (default: 10)'
+        '--num_steps', default=100, type=int,  help='number of forward steps in A2C (default: 10)'
     )
     parser.add_argument(
         '--enable_rotation', action='store_true', default=False,  help='whether agent can rotate box'

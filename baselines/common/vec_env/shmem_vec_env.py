@@ -76,6 +76,12 @@ class ShmemVecEnv(VecEnv):
         outs = [pipe.recv() for pipe in self.parent_pipes]
         self.waiting_step = False
         obs, rews, dones, infos = zip(*outs)
+        decoded_obs = self._decode_obses(obs)  # 这里才是真正的观察值
+        #  # 添加打印
+        # for i, done in enumerate(dones):
+        #     if done:
+        #         print(f"Environment {i} observation after potential reset:", decoded_obs[i])
+
         return self._decode_obses(obs), np.array(rews), np.array(dones), infos
 
     def close_extras(self):

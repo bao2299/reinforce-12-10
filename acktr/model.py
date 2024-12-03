@@ -21,8 +21,10 @@ class Policy(nn.Module):
         if base is None:
             if len(obs_shape) == 3:
                 base = CNNBase
+                print('cnnbase')
             elif len(obs_shape) == 1:
                 base = CNNPro
+                print('cnnpro')
             else:
                 raise NotImplementedError
 
@@ -65,6 +67,7 @@ class Policy(nn.Module):
         return value, action, action_log_probs, rnn_hxs
 
     def act_indepen(self, inputs, rnn_hxs, masks, deterministic=False):
+        
         value, actor_features, rnn_hxs, graph = self.base(inputs, rnn_hxs, masks)
         pred_mask = self.binary(graph)
         dist, _ = self.dist(actor_features, pred_mask)
@@ -87,6 +90,7 @@ class Policy(nn.Module):
 
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action, location_masks):
+        print('评估动作')
         value, actor_features, rnn_hxs, graph = self.base(inputs, rnn_hxs, masks)
         dist, bad_prob, mask_dist = self.dist(actor_features, location_masks)
         action_log_probs = dist.log_probs(action)
@@ -269,6 +273,14 @@ class CNNPro(NNBase):
             nn.ReLU(),
         )
 
+
+        #  # Replace the actor part with GRU
+        # self.actorgru_gru = nn.GRU(input_size=8 * args.pallet_size * args.pallet_size, hidden_size=hidden_size, batch_first=True)
+        # self.actorgru_linear = nn.Sequential(
+        #     init_(nn.Linear(hidden_size, hidden_size)),
+        #     nn.ReLU(),
+        # )
+
         self.critic = nn.Sequential(
             init_(nn.Conv2d(64, 4, 1, stride=1)),
             nn.ReLU(),
@@ -283,6 +295,15 @@ class CNNPro(NNBase):
         x = inputs.reshape((-1, self.args.channel, self.args.pallet_size, self.args.pallet_size))
         assert not self.is_recurrent
         share = self.share(x)
+       # print(f"share.size(0): {share.size(0)}")
+
+        #  # Prepare input for GRU actor network
+        # seq_len = share.size(0)  # Dynamically determine sequence length
+        # gru_input = share.view(1, seq_len, -1)  # Reshape to (batch_size=1, seq_len, input_size)
+        # gru_output, actorrnn_hxs = self.actorgru_gru(gru_input, actorrnn_hxs)  # Run GRU
+        # hidden_actor = self.actorgru_linear(gru_output)  # Pass through linear layer, take last time step
+
+
         hidden_critic = self.critic(share)
         hidden_actor = self.actor(share)
         pred_mask = self.mask(share)

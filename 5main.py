@@ -9,6 +9,8 @@ import logging
 import os
 
 import numpy as np
+import wandb
+
 
 from shutil import copyfile
 from acktr import algo, utils
@@ -35,11 +37,28 @@ def test_model(args):
     unified_test(model_url, args)
 
 def train_model(args):
+    
+    wandb.init(
+    project="bpp_project2",  # 项目名称
+    name="first-try1",            # 当前实验名称
+    config={
+        "algorithm": args.algorithm,
+        "num_steps": args.num_steps,
+        "num_processes": args.num_processes,
+        "gamma": args.gamma,
+        "learning_rate": args.lr,
+        "hidden_size": args.hidden_size,
+        "seed": args.seed,
+        "container_size": args.container_size,
+        "enable_rotation": args.enable_rotation
+    }
+    )
+
 
 
     # 初始化日志目录和文件路径
     log_dir = os.path.join(os.getcwd(), "consolelogs")  # 当前目录下的 logs 文件夹
-    log_file = os.path.join(log_dir, "2consoleout.log")  # 日志文件路径
+    log_file = os.path.join(log_dir, "3consoleout.log")  # 日志文件路径
 
     # 自动创建日志目录（如果不存在）
     os.makedirs(log_dir, exist_ok=True)
@@ -181,7 +200,7 @@ def train_model(args):
     done_flags_mask = [False] * args.num_processes 
 
     
-    while j<11:
+    while j<100000:
         
         for step in range(150):
             with torch.no_grad():
@@ -202,8 +221,12 @@ def train_model(args):
                     
             for i in range(len(infos)):
                 if 'episode' in infos[i].keys():
-                    episode_rewards.append(infos[i]['episode']['r'])
-                    episode_ratio.append(infos[i]['ratio'])
+                    
+
+                    if done_flags[i] == True and done_flags_mask[i] == False:
+                         episode_rewards.append(infos[i]['episode']['r'])
+                         episode_ratio.append(infos[i]['ratio'])
+                    
             
 
             for observation in obs:
@@ -253,20 +276,23 @@ def train_model(args):
                     done_flags_mask[i] = True
                     entertimes = entertimes + 1
                     print(f"entertimes has been incremented to: {entertimes,i,rollouts.step[i]}")
+
+            
                     
                     
 
                 
                 # 2. 检查是否所有环境都完成了
-            if all(done_flags):
+            if all(done_flags_mask):
                 # 所有环境都完成了，结束采样
                 # 假设 done_flags 已经存在，且你想将所有元素修改为 False
                 for i in range(len(done_flags)):
                     done_flags[i] = False
-
-                # 将 done_mask 列表的所有元素修改为 False
-                for i in range(len(done_flags_mask)):
                     done_flags_mask[i] = False
+
+
+                
+                
 
                 print("rollouts.step:", rollouts.step)  # 直接打印列表    
                 
@@ -288,7 +314,7 @@ def train_model(args):
                 rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, False, args.gamma, 0.95, False)
-        value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts)
+        value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts,j , wandb)
         j += 1
         print('第j次更细',j)
        
@@ -357,6 +383,11 @@ def train_model(args):
             logging.info(log_info_1)
             logging.info(log_info_2)
 
+            wandb.log({
+                    "episode_ratio": np.mean(episode_ratio)
+                })
+
+
 
 
 
@@ -369,6 +400,8 @@ def train_model(args):
                 writer.add_scalar("The action loss", action_loss, j)
                 writer.add_scalar('Probability loss', prob_loss, j)
                 writer.add_scalar("Mask loss", graph_loss, j)
+    
+    wandb.finish()
 
 def registration_envs():
     register(

@@ -9,6 +9,10 @@ def worker(remote, parent_remote, env_fn_wrappers):
         ob, reward, done, info = env.step(action)
         if done:
             ob = env.reset()
+            
+            
+            info['reset_observation'] = ob.tolist()  # 将观察值添加到 info 中
+
         return ob, reward, done, info
 
     parent_remote.close()

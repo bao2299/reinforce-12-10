@@ -5,10 +5,6 @@ from collections import deque
 import numpy as np
 import torch
 import copy
-import logging
-import os
-
-import numpy as np
 
 from shutil import copyfile
 from acktr import algo, utils
@@ -35,28 +31,6 @@ def test_model(args):
     unified_test(model_url, args)
 
 def train_model(args):
-
-
-    # 初始化日志目录和文件路径
-    log_dir = os.path.join(os.getcwd(), "consolelogs")  # 当前目录下的 logs 文件夹
-    log_file = os.path.join(log_dir, "2consoleout.log")  # 日志文件路径
-
-    # 自动创建日志目录（如果不存在）
-    os.makedirs(log_dir, exist_ok=True)
-
-
-        # 配置日志记录
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),  # 写入日志文件
-            logging.StreamHandler()  # 输出到控制台
-        ]
-    )
-
-
-
     custom = "2experiment_2" 
     time_now = time.strftime('%Y.%m.%d-%H-%M', time.localtime(time.time()))
     env_name = args.env_name
@@ -107,7 +81,6 @@ def train_model(args):
     print(actor_critic)
     print("Rotation:", args.enable_rotation)
     actor_critic.to(device)
-    
 
     # 备份代码
     copyfile('main.py', os.path.join(data_path, 'main.py'))
@@ -149,7 +122,6 @@ def train_model(args):
                               pallet_size=args.container_size[0])
 
     obs = envs.reset()
-    
     location_masks = []
     for observation in obs:
         if not args.enable_rotation:
@@ -175,14 +147,9 @@ def train_model(args):
 
     j = 0
     index = 0
-    realstep =0 
-    entertimes =0
-    done_flags = [False] * args.num_processes  # 用于标记每个环境的done状态
-    done_flags_mask = [False] * args.num_processes 
-
-    
-    while j<11:
-        
+    total_step =0 
+    while j<50000:
+        j += 1
         for step in range(150):
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
@@ -191,21 +158,14 @@ def train_model(args):
 
             location_masks = []
             obs, reward, done, infos = envs.step(action)
-
-                # 更新done_flags
-            # 遍历所有并行环境
-            for env_id in range(len(done)):
-                # 检查这个环境是否完成
-                if done[env_id] == True:
-                    # 如果完成了，标记这个环境的done_flag为True
-                    done_flags[env_id] = True
-                    
+             # 打印返回值，确认接收到的观测值、奖励、done 标志和信息
+            #print(f"main-received - Step {step}:")
+            #print(f"obs = {obs}")
+            
             for i in range(len(infos)):
                 if 'episode' in infos[i].keys():
                     episode_rewards.append(infos[i]['episode']['r'])
                     episode_ratio.append(infos[i]['ratio'])
-            
-
             for observation in obs:
                 if not args.enable_rotation:
                     box_mask = get_possible_position(observation, args.container_size)
@@ -214,71 +174,15 @@ def train_model(args):
                 location_masks.append(box_mask)
             location_masks = torch.FloatTensor(location_masks).to(device)
 
-             # 如果环境还未结束，则插入rollout
-            for i in range(args.num_processes):
-
-                if  done_flags[i] == False:
-                    # 获取当前并行环境的数据
-                    masks = torch.FloatTensor([[0.0] if done[i] else [1.0]]).squeeze()
-                    bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in infos[i].keys() else [1.0]]).squeeze()
-
-                    rollouts.insert(i, 
-                                    obs[i], 
-                                    recurrent_hidden_states[i], 
-                                    action[i], 
-                                    action_log_prob[i], 
-                                    value[i], 
-                                    reward[i], 
-                                    masks, 
-                                    bad_masks, 
-                                    location_masks[i])
-                
-                    
-                # rollout 最后一次插入 当这个并行环境结束  
-                if done_flags[i] == True and done_flags_mask[i] == False:
-                       # 获取当前并行环境的数据
-                    masks = torch.FloatTensor([[0.0] if done[i] else [1.0]]).squeeze()
-                    bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in infos[i].keys() else [1.0]]).squeeze()
-
-                    rollouts.insert(i, 
-                                    obs[i], 
-                                    recurrent_hidden_states[i], 
-                                    action[i], 
-                                    action_log_prob[i], 
-                                    value[i], 
-                                    reward[i], 
-                                    masks, 
-                                    bad_masks, 
-                                    location_masks[i])
-                    done_flags_mask[i] = True
-                    entertimes = entertimes + 1
-                    print(f"entertimes has been incremented to: {entertimes,i,rollouts.step[i]}")
-                    
-                    
-
-                
-                # 2. 检查是否所有环境都完成了
-            if all(done_flags):
-                # 所有环境都完成了，结束采样
-                # 假设 done_flags 已经存在，且你想将所有元素修改为 False
-                for i in range(len(done_flags)):
-                    done_flags[i] = False
-
-                # 将 done_mask 列表的所有元素修改为 False
-                for i in range(len(done_flags_mask)):
-                    done_flags_mask[i] = False
-
-                print("rollouts.step:", rollouts.step)  # 直接打印列表    
-                
-                break
-
-            #如果所有的done 都是true了 不在继续并行采样了
-
-            realstep = sum(rollouts.step)
-
-
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0] for done_ in done])
+            bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in info.keys() else [1.0] for info in infos])
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, bad_masks,
+                            location_masks)
+            total_step = total_step + 1
             
-                
+            if done == True:
+                exit()
+                break
                 
                 
 
@@ -289,15 +193,11 @@ def train_model(args):
 
         rollouts.compute_returns(next_value, False, args.gamma, 0.95, False)
         value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts)
-        j += 1
         print('第j次更细',j)
-       
-        
-        print("rollouts.step:", rollouts.step)  # 直接打印列表
-        # 退出程序
-        
+        # 退出程序（可选）
+        # exit()
 
-        #重新初始化 rollouts
+        # 重新初始化 rollouts
         rollouts = RolloutStorage(args.num_steps,
                                   args.num_processes,
                                   envs.observation_space.shape,
@@ -330,36 +230,23 @@ def train_model(args):
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             #total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            total_num_steps = realstep
+            total_num_steps = total_step
             end = time.time()
             index += 1
-
-
-            log_info_1 = (
+            print(
                 "The algorithm is {}, the recurrent policy is {}\nThe env is {}, the version is {}".format(
-                    args.algorithm, False, env_name, custom
-                )
-            )
-            log_info_2 = (
-                "Updates {}, num timesteps {}, FPS {}\n"
+                    args.algorithm, False, env_name, custom))
+            print(
+                "Updates {}, num timesteps {}, FPS {} \n"
                 "Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
                 "The dist entropy {:.5f}, The value loss {:.5f}, the action loss {:.5f}\n"
-                "The mean space ratio is {}".format(
-                    j, total_num_steps, int(total_num_steps / (end - start)),
-                    len(episode_rewards), np.mean(episode_rewards),
-                    np.median(episode_rewards), np.min(episode_rewards),
-                    np.max(episode_rewards), dist_entropy, value_loss,
-                    action_loss, np.mean(episode_ratio)
-                )
-            )
-
-            # 打印到控制台和日志文件
-            logging.info(log_info_1)
-            logging.info(log_info_2)
-
-
-
-
+                "The mean space ratio is {}\n"
+                .format(j, total_num_steps,
+                        int(total_num_steps / (end - start)),
+                        len(episode_rewards), np.mean(episode_rewards),
+                        np.median(episode_rewards), np.min(episode_rewards),
+                        np.max(episode_rewards), dist_entropy, value_loss,
+                        action_loss, np.mean(episode_ratio)))
 
             if args.tensorboard:
                 writer.add_scalar('The average rewards', np.mean(episode_rewards), j)

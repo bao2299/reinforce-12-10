@@ -54,6 +54,7 @@ class PackingGame(gym.Env):
 
     def reset(self):
         self.box_creator.reset()
+        
         self.space = Space(*self.bin_size)
         self.box_creator.generate_box_size()
         return self.cur_observation

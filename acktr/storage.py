@@ -41,7 +41,7 @@ class RolloutStorage(object):
         # or time limit end state
         self.bad_masks = torch.ones(num_steps + 1, num_processes, 1)
         self.num_steps = num_steps
-        self.step = 0
+        self.step = [0] * num_processes
 
     def to(self, device):
         self.obs = self.obs.to(device)
@@ -55,19 +55,38 @@ class RolloutStorage(object):
         self.bad_masks = self.bad_masks.to(device)
         self.location_masks = self.location_masks.to(device)
 
-    def insert(self, obs, recurrent_hidden_states, actions, action_log_probs,
-               value_preds, rewards, masks, bad_masks, location_masks):
-        self.obs[self.step + 1].copy_(obs)
-        self.recurrent_hidden_states[self.step + 1].copy_(recurrent_hidden_states)
-        self.actions[self.step].copy_(actions)
-        self.action_log_probs[self.step].copy_(action_log_probs)
-        self.value_preds[self.step].copy_(value_preds)
-        self.rewards[self.step].copy_(rewards)
-        self.masks[self.step + 1].copy_(masks)
-        self.bad_masks[self.step + 1].copy_(bad_masks)
-        self.location_masks[self.step + 1].copy_(location_masks)
-        #self.step = (self.step + 1) % self.num_steps
-        self.step = (self.step + 1)
+    # def insert(self, obs, recurrent_hidden_states, actions, action_log_probs,
+    #            value_preds, rewards, masks, bad_masks, location_masks):
+    #     self.obs[self.step + 1].copy_(obs)
+    #     self.recurrent_hidden_states[self.step + 1].copy_(recurrent_hidden_states)
+    #     self.actions[self.step].copy_(actions)
+    #     self.action_log_probs[self.step].copy_(action_log_probs)
+    #     self.value_preds[self.step].copy_(value_preds)
+    #     self.rewards[self.step].copy_(rewards)
+    #     self.masks[self.step + 1].copy_(masks)
+    #     self.bad_masks[self.step + 1].copy_(bad_masks)
+    #     self.location_masks[self.step + 1].copy_(location_masks)
+    #     #self.step = (self.step + 1) % self.num_steps
+    #     self.step = (self.step + 1)
+
+
+
+    def insert(self, env_idx, obs, recurrent_hidden_states, actions, action_log_probs,
+           value_preds, rewards, masks, bad_masks, location_masks):
+    # 对应于指定的并行环境
+        current_step = self.step[env_idx]
+        self.obs[current_step + 1, env_idx].copy_(obs)
+        self.recurrent_hidden_states[current_step + 1, env_idx].copy_(recurrent_hidden_states)
+        self.actions[current_step, env_idx].copy_(actions)
+        self.action_log_probs[current_step, env_idx].copy_(action_log_probs)
+        self.value_preds[current_step, env_idx].copy_(value_preds)
+        self.rewards[current_step, env_idx].copy_(rewards)
+        self.masks[current_step + 1, env_idx].copy_(masks)
+        self.bad_masks[current_step + 1, env_idx].copy_(bad_masks)
+        self.location_masks[current_step + 1, env_idx].copy_(location_masks)
+        # 更新该环境的步数
+        self.step[env_idx] += 1
+
 
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])
@@ -96,6 +115,7 @@ class RolloutStorage(object):
                         use_proper_time_limits=True,
                         reinforce=True): # 这里一定要改成true 如果想用reinforce算法的话
         if reinforce:
+            '''
             # 蒙特卡洛方法：累计轨迹总回报
             print('查看每条轨迹走了多少步')
             print(self.step)
@@ -114,6 +134,26 @@ class RolloutStorage(object):
             returns_mean = valid_returns.mean()
             returns_std = valid_returns.std() + 1e-5  # 防止标准差为0导致的除0错误
             self.returns[:self.step] = (valid_returns - returns_mean) / returns_std
+            '''
+
+                # 遍历每个并行环境，单独计算每个环境的 returns
+            for i in range(len(self.step)):
+                current_step = self.step[i]  # 获取当前并行环境的步数
+                if current_step > 0:  # 确保步数有效
+                    # 将最后一个时间步的 returns 赋值为当前时间步的 reward
+                    self.returns[current_step - 1, i] = self.rewards[current_step - 1, i]
+                    
+                    # 从倒数第二个时间步开始反向遍历，计算累计回报
+                    for step in range(current_step - 2, -1, -1):
+                        self.returns[step, i] = self.rewards[step, i] + gamma * self.returns[step + 1, i]
+
+            # 对累积回报进行标准化处理
+            for i in range(len(self.step)):
+                
+                valid_returns = self.returns[:self.step[i], i]  # 只对有效的部分进行标准化
+                returns_mean = valid_returns.mean()
+                returns_std = valid_returns.std() + 1e-5  # 防止标准差为0导致的除0错误
+                self.returns[:self.step[i], i] = (valid_returns - returns_mean) / returns_std
         else:
             # 原有的 TD 或 GAE 方法
             if use_proper_time_limits:

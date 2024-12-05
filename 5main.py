@@ -40,7 +40,7 @@ def train_model(args):
     
     wandb.init(
     project="bpp_project2",  # 项目名称
-    name="first-try1",            # 当前实验名称
+    name="first-try3",            # 当前实验名称
     config={
         "algorithm": args.algorithm,
         "num_steps": args.num_steps,
@@ -200,10 +200,14 @@ def train_model(args):
     done_flags_mask = [False] * args.num_processes 
 
     
-    while j<100000:
-        
-        for step in range(150):
+
+
+    while j<60000:
+        print('开始新一轮的batch-size')
+
+        for step in range(100):
             with torch.no_grad():
+                
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step], location_masks)
@@ -245,23 +249,8 @@ def train_model(args):
                     masks = torch.FloatTensor([[0.0] if done[i] else [1.0]]).squeeze()
                     bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in infos[i].keys() else [1.0]]).squeeze()
 
-                    rollouts.insert(i, 
-                                    obs[i], 
-                                    recurrent_hidden_states[i], 
-                                    action[i], 
-                                    action_log_prob[i], 
-                                    value[i], 
-                                    reward[i], 
-                                    masks, 
-                                    bad_masks, 
-                                    location_masks[i])
-                
-                    
-                # rollout 最后一次插入 当这个并行环境结束  
-                if done_flags[i] == True and done_flags_mask[i] == False:
-                       # 获取当前并行环境的数据
-                    masks = torch.FloatTensor([[0.0] if done[i] else [1.0]]).squeeze()
-                    bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in infos[i].keys() else [1.0]]).squeeze()
+                    # 获取 lossmask 的值，根据需要可以修改为不同的逻辑
+                    current_lossmask = torch.tensor([1.0])  #  lossmask 是 1.0
 
                     rollouts.insert(i, 
                                     obs[i], 
@@ -272,10 +261,48 @@ def train_model(args):
                                     reward[i], 
                                     masks, 
                                     bad_masks, 
-                                    location_masks[i])
+                                    location_masks[i],
+                                    current_lossmask)
+                
+                    
+                # rollout 最后一次插入 当这个并行环境结束  
+                if done_flags[i] == True and done_flags_mask[i] == False:
+                       # 获取当前并行环境的数据
+                    masks = torch.FloatTensor([[0.0] if done[i] else [1.0]]).squeeze()
+                    bad_masks = torch.FloatTensor([[0.0] if 'bad_transition' in infos[i].keys() else [1.0]]).squeeze()
+
+                    current_lossmask = torch.tensor([0.0])  # 因为插入的位置是step+1 由于这个轨迹结束了这里要插入0
+
+                    
+                    rollouts.insert(i, 
+                                    obs[i], 
+                                    recurrent_hidden_states[i], 
+                                    action[i], 
+                                    action_log_prob[i], 
+                                    value[i], 
+                                    reward[i], 
+                                    masks, 
+                                    bad_masks, 
+                                    location_masks[i],
+                                    current_lossmask)
+                    
+                    # 插入完后做一个判断，如果这里初始状态就放错误，lossmask的0索引的值 应该也是0
+                    
                     done_flags_mask[i] = True
                     entertimes = entertimes + 1
                     print(f"entertimes has been incremented to: {entertimes,i,rollouts.step[i]}")
+
+                    #如果这个环境只走了一步就gg
+                    if(rollouts.step[i]==1):
+                         # 将第一个时间步的 lossmask 对应环境位置设置为 0
+                        print('出现了只走了一步的情况 ')
+
+                        rollouts.reset_trajectory(i)
+                        done_flags_mask[i] = False
+                        done_flags[i]=False
+                        print('抛弃这个轨迹')
+
+
 
             
                     
@@ -285,16 +312,17 @@ def train_model(args):
                 # 2. 检查是否所有环境都完成了
             if all(done_flags_mask):
                 # 所有环境都完成了，结束采样
-                # 假设 done_flags 已经存在，且你想将所有元素修改为 False
+               
                 for i in range(len(done_flags)):
                     done_flags[i] = False
                     done_flags_mask[i] = False
 
 
                 
-                
+                print('所有的并行环境都结束了')
 
-                print("rollouts.step:", rollouts.step)  # 直接打印列表    
+               
+                
                 
                 break
 
@@ -314,11 +342,10 @@ def train_model(args):
                 rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, False, args.gamma, 0.95, False)
+        print('回报计算ok')
         value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts,j , wandb)
         j += 1
         print('第j次更细',j)
-       
-        
         print("rollouts.step:", rollouts.step)  # 直接打印列表
         # 退出程序
         

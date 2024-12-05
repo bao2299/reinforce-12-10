@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from acktr.distributions import Bernoulli, Categorical, DiagGaussian
 from acktr.utils import init
+from acktr.distributions import FixedCategorical
 
 
 class Flatten(nn.Module):
@@ -57,9 +58,14 @@ class Policy(nn.Module):
         value, actor_features, rnn_hxs, graph = self.base(inputs, rnn_hxs, masks)
         dist, bad_prob, _ = self.dist(actor_features, location_masks)
 
+        
+        
+    
+
         if deterministic:
             action = dist.mode()
         else:
+            
             action = dist.sample()
 
         action_log_probs = dist.log_probs(action)
@@ -94,7 +100,9 @@ class Policy(nn.Module):
         value, actor_features, rnn_hxs, graph = self.base(inputs, rnn_hxs, masks)
         dist, bad_prob, mask_dist = self.dist(actor_features, location_masks)
         action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
+        # dist_entropy = dist.entropy().mean()
+        dist_entropy = dist.entropy()
+
 
         return value, action_log_probs, dist_entropy, rnn_hxs, bad_prob, graph
 

@@ -42,6 +42,8 @@ class RolloutStorage(object):
         self.bad_masks = torch.ones(num_steps + 1, num_processes, 1)
         self.num_steps = num_steps
         self.step = [0] * num_processes
+        self.lossmask = torch.zeros(num_steps, num_processes, 1)
+        self.lossmask[0, :, :] = 1
 
     def to(self, device):
         self.obs = self.obs.to(device)
@@ -54,6 +56,7 @@ class RolloutStorage(object):
         self.masks = self.masks.to(device)
         self.bad_masks = self.bad_masks.to(device)
         self.location_masks = self.location_masks.to(device)
+        self.lossmask = self.lossmask.to(device)
 
     # def insert(self, obs, recurrent_hidden_states, actions, action_log_probs,
     #            value_preds, rewards, masks, bad_masks, location_masks):
@@ -72,7 +75,7 @@ class RolloutStorage(object):
 
 
     def insert(self, env_idx, obs, recurrent_hidden_states, actions, action_log_probs,
-           value_preds, rewards, masks, bad_masks, location_masks):
+           value_preds, rewards, masks, bad_masks, location_masks,lossmask):
     # 对应于指定的并行环境
         current_step = self.step[env_idx]
         self.obs[current_step + 1, env_idx].copy_(obs)
@@ -84,8 +87,44 @@ class RolloutStorage(object):
         self.masks[current_step + 1, env_idx].copy_(masks)
         self.bad_masks[current_step + 1, env_idx].copy_(bad_masks)
         self.location_masks[current_step + 1, env_idx].copy_(location_masks)
+        # 插入 lossmask 的值
+        self.lossmask[current_step +1 , env_idx].copy_(lossmask)
         # 更新该环境的步数
         self.step[env_idx] += 1
+
+
+
+    def reset_trajectory(self, i):
+        """
+        清空指定轨迹的数据，将其重置为初始值。
+        
+        参数:
+            i (int): 并行环境的索引。
+        """
+        # 重置轨迹相关的数据
+        self.obs[:, i].fill_(0)  # 初始值为0
+        self.recurrent_hidden_states[:, i].fill_(0)  # 初始值为0
+        self.rewards[:, i].fill_(0)  # 初始值为0
+        self.value_preds[:, i].fill_(0)  # 初始值为0
+        self.returns[:, i].fill_(0)  # 初始值为0
+        self.action_log_probs[:, i].fill_(0)  # 初始值为0
+        self.actions[:, i].fill_(0)  # 初始值为0
+        self.masks[:, i].fill_(1)  # 初始值为1
+        self.bad_masks[:, i].fill_(1)  # 初始值为1
+
+        # 根据初始化时的情况重置 location_masks
+        if hasattr(self, 'enable_rotation') and self.enable_rotation:
+            self.location_masks[:, i].fill_(0)  # 初始值为0
+        elif hasattr(self, 'can_give_up') and self.can_give_up:
+            self.location_masks[:, i].fill_(0)  # 初始值为0
+        else:
+            self.location_masks[:, i].fill_(0)  # 初始值为0
+
+        self.lossmask[:, i].fill_(0)  # 初始值为0
+        self.lossmask[0, i].fill_(1)  # 在初始步设置 loss 掩码为1，符合初始化时的状态
+
+        # 重置当前轨迹的步数
+        self.step[i] = 0
 
 
     def after_update(self):

@@ -16,14 +16,46 @@ Modify standard PyTorch distributions so they are compatible with this code.
 FixedCategorical = torch.distributions.Categorical
 
 old_sample = FixedCategorical.sample
+
 FixedCategorical.sample = lambda self: old_sample(self).unsqueeze(-1)
-# old_sample = FixedCategorical.sample
+
+
+# def _validate_probs(self):
+#     # 确保分布有 probs 或 logits
+#     if hasattr(self, 'probs'):
+#         probs = self.probs
+#     else:
+#         probs = torch.softmax(self.logits, dim=-1)
+
+#     # 修正负值为 0
+#     if (probs < 0).any():
+#         print("Found invalid probabilities, fixing...")
+#         probs = torch.clamp(probs, min=0)
+
+#     # 修正全零分布为均匀分布
+#     if probs.sum(dim=-1).min().item() == 0:
+#         print("Warning: Found zero-sum probabilities, fixing...")
+#         probs = torch.ones_like(probs) / probs.size(-1)
+
+#     # 更新 probs
+#     self.probs = probs
+#     return old_sample(self)
+
+# # 将 _validate_probs 绑定到 FixedCategorical 类
+# FixedCategorical._validate_probs = _validate_probs
+
+# # 修改 sample 方法
+# FixedCategorical.sample = lambda self: self._validate_probs().sample().unsqueeze(-1)
+
+# # # 重写 sample 方法
 # FixedCategorical.sample = lambda self: (
 #     torch.multinomial(
-#         torch.clamp(self.probs, min=0) / torch.clamp(self.probs, min=0).sum(dim=-1, keepdim=True),
+#         torch.clamp(self.probs, min=0) /
+#         torch.clamp(self.probs, min=0).sum(dim=-1, keepdim=True).clamp(min=1e-8),  # 防止全零分布
 #         1
 #     )
 # )
+
 
 
 
@@ -84,8 +116,21 @@ class Categorical(nn.Module):
         ones = torch.ones_like(mask)
         inver_mask = ones - mask
 
+         # 在softmax前先减去最大值
         lx = F.softmax(x - inver_mask * 14, dim=-1)
         lx = lx + 1e-5
+        
+       
+        lx = lx / lx.sum(dim=-1, keepdim=True)  # 重新归一化，让和=1
+
+
+
+        lx = torch.clamp(lx, min=0)  # 修正负值
+    #     lx_sum = lx.sum(dim=-1, keepdim=True)
+    #    # 将全零行替换为均匀分布
+    #     lx[lx_sum.expand_as(lx) == 0] = 1.0 / lx.size(-1)
+
+
 
         # branch 2
         # choose vaild actions
@@ -108,6 +153,9 @@ class Categorical(nn.Module):
         # dx = -dx
 
         return fat_cat, bx, dx
+
+    # 
+    
     
 
     # def forward(self, x, mask):

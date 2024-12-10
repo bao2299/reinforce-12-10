@@ -40,7 +40,7 @@ def train_model(args):
     
     wandb.init(
     project="bpp_project2",  # 项目名称
-    name="first-try3",            # 当前实验名称
+    name="trash",            # 当前实验名称
     config={
         "algorithm": args.algorithm,
         "num_steps": args.num_steps,
@@ -202,16 +202,17 @@ def train_model(args):
     
 
 
-    while j<60000:
+    while j<100:
         print('开始新一轮的batch-size')
 
-        for step in range(100):
+        for step in range(80):
             with torch.no_grad():
                 
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                     rollouts.obs[step], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step], location_masks)
-
+           
+            
             location_masks = []
             obs, reward, done, infos = envs.step(action)
 
@@ -297,10 +298,11 @@ def train_model(args):
                          # 将第一个时间步的 lossmask 对应环境位置设置为 0
                         print('出现了只走了一步的情况 ')
 
-                        rollouts.reset_trajectory(i)
-                        done_flags_mask[i] = False
-                        done_flags[i]=False
-                        print('抛弃这个轨迹')
+                        # rollouts.reset_trajectory(i)
+                        # rollouts.location_masks[0, i].copy_(location_masks[i])
+                        # done_flags_mask[i] = False
+                        # done_flags[i]=False
+                        # print('抛弃这个轨迹')
 
 
 
@@ -344,7 +346,7 @@ def train_model(args):
         rollouts.compute_returns(next_value, False, args.gamma, 0.95, False)
         print('回报计算ok')
         value_loss, action_loss, dist_entropy, prob_loss, graph_loss = agent.update(rollouts,j , wandb)
-        j += 1
+        
         print('第j次更细',j)
         print("rollouts.step:", rollouts.step)  # 直接打印列表
         # 退出程序
@@ -411,7 +413,9 @@ def train_model(args):
             logging.info(log_info_2)
 
             wandb.log({
-                    "episode_ratio": np.mean(episode_ratio)
+                    "episode_ratio": np.mean(episode_ratio),
+                    "episode_rewards": np.mean(episode_rewards)
+
                 })
 
 
@@ -426,7 +430,10 @@ def train_model(args):
                 writer.add_scalar("The value loss", value_loss, j)
                 writer.add_scalar("The action loss", action_loss, j)
                 writer.add_scalar('Probability loss', prob_loss, j)
+        
                 writer.add_scalar("Mask loss", graph_loss, j)
+
+        j += 1
     
     wandb.finish()
 

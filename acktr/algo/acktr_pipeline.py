@@ -52,19 +52,19 @@ class ACKTR():
         shared_params = set(actor_params_ids) & set(critic_params_ids)
         print(f"共享的参数数量: {len(shared_params)}")  # 如果大于 0，则存在共享问题
        
-        # 打印 Actor 优化器包含的参数名称和形状
-        print("Actor Optimizer Parameters:")
-        for name, param in actor_critic.named_parameters():
-            if id(param) in actor_params_ids:  # 使用 id(param) 来进行比较
-                print(f"Parameter Name: {name}, Shape: {param.shape}")
+        # # 打印 Actor 优化器包含的参数名称和形状
+        # print("Actor Optimizer Parameters:")
+        # for name, param in actor_critic.named_parameters():
+        #     if id(param) in actor_params_ids:  # 使用 id(param) 来进行比较
+        #         print(f"Parameter Name: {name}, Shape: {param.shape}")
 
-        # 打印 Critic 优化器包含的参数名称和形状
-        print("\nCritic Optimizer Parameters:")
-        for name, param in actor_critic.named_parameters():
-            if id(param) in critic_params_ids:  # 使用 id(param) 来进行比较
-                print(f"Parameter Name: {name}, Shape: {param.shape}")
+        # # 打印 Critic 优化器包含的参数名称和形状
+        # print("\nCritic Optimizer Parameters:")
+        # for name, param in actor_critic.named_parameters():
+        #     if id(param) in critic_params_ids:  # 使用 id(param) 来进行比较
+        #         print(f"Parameter Name: {name}, Shape: {param.shape}")
 
-        exit()
+        # exit()
 
 
     def update(self, rollouts, j, wandb):
@@ -73,75 +73,115 @@ class ACKTR():
         #     print(f"!!!Skipping update: 当前_num_steps = {rollouts.step}")
         #     return 0, 0, 0, 0, 0
 
-        
+        T = 80
         # 获取维度信息
-        # rollouts.obs: [51, num_processes, *obs_shape]
-        # rollouts.actions: [50, num_processes, action_dim]
+        # rollouts.obs: [T+1, num_processes, *obs_shape]
+        # rollouts.actions:-T, num_processes, action_dim]
         # rollouts.rewards: [50, num_processes, 1]
         # rollouts.location_masks: [51, num_processes, mask_size]
-        obs_shape = rollouts.obs[:51].size()[2:]  
-        action_shape = rollouts.actions[:50].size()[-1]
-        num_steps, num_processes, _ = rollouts.rewards[:50].size()
-        mask_size = rollouts.location_masks[:51].size()[-1]
+        obs_shape = rollouts.obs[:T].size()[2:]  
+        action_shape = rollouts.actions[:T].size()[-1]
+        num_steps, num_processes, _ = rollouts.rewards[:T].size()
+        mask_size = rollouts.location_masks[:T].size()[-1]
+      
 
+      # 打印完整的形状
+        # print("Complete shapes:")
+        # print(f"rollouts.obs shape: {rollouts.obs.size()}")
+        # print(f"rollouts.actions shape: {rollouts.actions.size()}")
+        # print(f"rollouts.rewards shape: {rollouts.rewards.size()}")
+        # print(f"rollouts.location_masks shape: {rollouts.location_masks.size()}")
+
+        # 打印提取的形状
+        print("\nExtracted shapes:")
+        print(f"obs_shape: {obs_shape}")
+        print(f"action_shape: {action_shape}")
+        print(f"num_steps: {num_steps}, num_processes: {num_processes}")
+        print(f"mask_size: {mask_size}")
         realnumprocess = num_processes
         for i, step in enumerate(rollouts.step):
             if step == 1:
                 print(f"Found step == 1 for environment {i}")
-                realnumprocess = num_processes-1
-                rollouts.lossmask[:, i].fill_(0)
+                # return 0,0,0,0,0
             
-
+        
         # Evaluate actions
         # 输入形状:
-        # obs: [50 * num_processes, *obs_shape]
+        # obs: [T * num_processes, *obs_shape]
         # recurrent_hidden_states: [num_processes, hidden_state_size]
-        # masks: [50 * num_processes, 1]
-        # actions: [50 * num_processes, action_shape]
-        # location_masks: [50 * num_processes, mask_size]
-        values, action_log_probs, dist_entropy, _, bad_prob, pred_mask = self.actor_critic.evaluate_actions(
-            rollouts.obs[:50].view(-1, *obs_shape),
-            rollouts.recurrent_hidden_states[0].view(-1, self.actor_critic.recurrent_hidden_state_size),
-            rollouts.masks[:50].view(-1, 1),
-            rollouts.actions[:50].view(-1, action_shape),
-            rollouts.location_masks[:50].view(-1, mask_size)
-        )
+        # masks: [T * num_processes, 1]
+        # actions: [T * num_processes, action_shape]
+        # location_masks: [T * num_processes, mask_size]
+        obs_input = rollouts.obs[:T].view(-1, *obs_shape)
+        masks_input = rollouts.masks[:T].view(-1, 1)
+        actions_input = rollouts.actions[:T].view(-1, action_shape)
+           
+        location_masks_input = rollouts.location_masks[:T].view(-1, mask_size)
 
+        lossmask_input = rollouts.lossmask[:T].view(-1, 1) # [T * N, 1]
+        # 将各输入与lossmask相乘（除 recurrent_hidden_states[0] 外）
+        obs_input = obs_input * lossmask_input     # obs与lossmask相乘
+        # masks_input = masks_input * lossmask_input   # masks是 [T*N,1]，与lossmask_input [T*N,1] 直接相乘
+        actions_input = actions_input * lossmask_input   # actions [T*N, action_dim] 与 [T*N,1] 会广播
+        location_masks_input = location_masks_input * lossmask_input  # [T*N, mask_size]与[T*N,1] 也可直接相乘
+
+        
+            
+        values, action_log_probs, dist_entropy, _, bad_prob, pred_mask = self.actor_critic.evaluate_actions(
+            obs_input,
+            rollouts.recurrent_hidden_states[0].view(-1, 256),# 如果是rnn 记得改成256
+            masks_input,
+            actions_input,
+            location_masks_input,
+            lossmask_input
+        )
+        
         # 打印 的形状
-        print("action_log_probs.shale",action_log_probs.shape)
-        print("dist_entropy shape:", dist_entropy.shape)
-        print("bad_prob shape:", bad_prob.shape)
-        print("predmask shape:", pred_mask.shape)
+        # print("values:\n", values)
+        # print("values shape:", values.shape)
+        # print("action_log_probs:\n", action_log_probs)
+        # print("action_log_probs.shale",action_log_probs.shape)
+        # print("dist_entropy:\n", dist_entropy)
+        # print("dist_entropy shape:", dist_entropy.shape)
+        # print("bad_prob:\n", bad_prob)
+        # print("bad_prob shape:", bad_prob.shape)
+        # print("pred_mask:\n", pred_mask)
+        # print("predmask shape:", pred_mask.shape)
+        # print('rolloutlossmsk：',rollouts.lossmask)
+        # print('rollouts.returns',rollouts.returns)
+        # print('rollouts.reward',rollouts.rewards)
+        
+
         
 
 
        
         # 输出重塑
-        # values: [50, num_processes, 1]
-        # action_log_probs: [50, num_processes, 1]
-        values = values.view(50, num_processes, 1)
-        action_log_probs = action_log_probs.view(50, num_processes, 1)
+        # values: [T, num_processes, 1]
+        # action_log_probs: [T, num_processes, 1]
+        values = values.view(T, num_processes, 1)
+        action_log_probs = action_log_probs.view(T, num_processes, 1)
 
         # 计算损失
         if not self.reinforce:
-            # advantages: [50, num_processes, 1]
-            advantages = rollouts.returns[:50] - values
+            # advantages: [T, num_processes, 1]
+            advantages = rollouts.returns[:T] - values
             value_loss = advantages.pow(2).mean()
             action_loss = -(advantages.detach() * action_log_probs).mean()
         else:
-            # advantages: [50, num_processes, 1]
+            # advantages: [T, num_processes, 1]
             print("reninforce = true")
-            advantages = rollouts.returns[:50]
+            advantages = rollouts.returns[:T]
             action_loss = -(advantages.detach()* action_log_probs)
             action_loss = action_loss * rollouts.lossmask
             action_loss = action_loss.sum()/realnumprocess
 
             critic_loss = self.loss_func_value(
-                values.view(-1, 1),  # [50 * num_processes, 1]
-                rollouts.returns[:50].view(-1, 1)  # [50 * num_processes, 1]
+                values.view(-1, 1),  # [T * num_processes, 1]
+                rollouts.returns[:T].view(-1, 1)  # [T * num_processes, 1]
             )
 
-            critic_loss = critic_loss.view(50, num_processes, 1)
+            critic_loss = critic_loss.view(T, num_processes, 1)
             # 算出来的损失去成lossmask
             critic_loss = critic_loss * rollouts.lossmask 
             # 总损失去除以轨迹数
@@ -162,20 +202,20 @@ class ACKTR():
         if self.args.enable_rotation:
             mask_len *= 2
 
-        # pred_mask: [50, num_processes, mask_len]
-        # mask_truth: [50, num_processes, mask_len]
-        pred_mask = pred_mask.view(50, num_processes, mask_len)
-        mask_truth = rollouts.location_masks[0:50]
+        # pred_mask: [T, num_processes, mask_len]
+        # mask_truth: [T, num_processes, mask_len]
+        pred_mask = pred_mask.view(T, num_processes, mask_len)
+        mask_truth = rollouts.location_masks[0:T]
         graph_loss = self.loss_func_graph(pred_mask, mask_truth)
         graph_loss = graph_loss * rollouts.lossmask
         graph_loss = graph_loss.sum()/realnumprocess
 
-        dist_entropy = dist_entropy.view(50, num_processes, 1)
+        dist_entropy = dist_entropy.view(T, num_processes, 1)
         dist_entropy = dist_entropy * rollouts.lossmask
         dist_entropy = dist_entropy.sum()/realnumprocess
 
         prob_loss = bad_prob
-        prob_loss = prob_loss.view(50, num_processes, 100)
+        prob_loss = prob_loss.view(T, num_processes, 100)
         prob_loss = prob_loss * rollouts.lossmask
         prob_loss = prob_loss.sum()/realnumprocess
         
@@ -204,7 +244,7 @@ class ACKTR():
         self.optimizer.step()
         print("参数更新成功")
         
-
+      
         # 每10次迭代记录到wandb
         if j % 10 == 0:
             wandb.log({

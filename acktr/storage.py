@@ -24,6 +24,8 @@ class RolloutStorage(object):
         #print("Initial rewards:", self.rewards)
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
+            
+            
         else:
             action_shape = action_space.shape[0]
         self.actions = torch.zeros(num_steps, num_processes, action_shape)
@@ -153,7 +155,7 @@ class RolloutStorage(object):
                         gae_lambda,
                         use_proper_time_limits=True,
                         reinforce=True): # 这里一定要改成true 如果想用reinforce算法的话
-        if reinforce:
+       
             '''
             # 蒙特卡洛方法：累计轨迹总回报
             print('查看每条轨迹走了多少步')
@@ -185,6 +187,8 @@ class RolloutStorage(object):
                     # 从倒数第二个时间步开始反向遍历，计算累计回报
                     for step in range(current_step - 2, -1, -1):
                         self.returns[step, i] = self.rewards[step, i] + gamma * self.returns[step + 1, i]
+            # 在标准化之前打印 returns
+            # print("Unstandardized returns:\n", self.returns)
 
             # 对累积回报进行标准化处理
             for i in range(len(self.step)):
@@ -193,36 +197,39 @@ class RolloutStorage(object):
                 returns_mean = valid_returns.mean()
                 returns_std = valid_returns.std() + 1e-5  # 防止标准差为0导致的除0错误
                 self.returns[:self.step[i], i] = (valid_returns - returns_mean) / returns_std
-        else:
-            # 原有的 TD 或 GAE 方法
-            if use_proper_time_limits:
-                if use_gae:
-                    self.value_preds[-1] = next_value
-                    gae = 0
-                    for step in reversed(range(self.rewards.size(0))):
-                        delta = self.rewards[step] + gamma * self.value_preds[step + 1] * self.masks[step + 1] - \
-                                self.value_preds[step]
-                        gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
-                        gae = gae * self.bad_masks[step + 1]
-                        self.returns[step] = gae + self.value_preds[step]
-                else:
-                    self.returns[-1] = next_value
-                    for step in reversed(range(self.rewards.size(0))):
-                        self.returns[step] = (self.returns[step + 1] * gamma * self.masks[step + 1] + self.rewards[
-                            step]) * self.bad_masks[step + 1] + (1 - self.bad_masks[step + 1]) * self.value_preds[step]
-            else:
-                if use_gae:
-                    self.value_preds[-1] = next_value
-                    gae = 0
-                    for step in reversed(range(self.rewards.size(0))):
-                        delta = self.rewards[step] + gamma * self.value_preds[step + 1] * self.masks[step + 1] - \
-                                self.value_preds[step]
-                        gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
-                        self.returns[step] = gae + self.value_preds[step]
-                else:
-                    self.returns[-1] = next_value
-                    for step in reversed(range(self.rewards.size(0))):
-                        self.returns[step] = self.returns[step + 1] * gamma * self.masks[step + 1] + self.rewards[step]
+
+            # 在标准化之后也可以打印对照
+            # print("Standardized returns:\n", self.returns)
+        # else:
+        #     # 原有的 TD 或 GAE 方法
+        #     if use_proper_time_limits:
+        #         if use_gae:
+        #             self.value_preds[-1] = next_value
+        #             gae = 0
+        #             for step in reversed(range(self.rewards.size(0))):
+        #                 delta = self.rewards[step] + gamma * self.value_preds[step + 1] * self.masks[step + 1] - \
+        #                         self.value_preds[step]
+        #                 gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
+        #                 gae = gae * self.bad_masks[step + 1]
+        #                 self.returns[step] = gae + self.value_preds[step]
+        #         else:
+        #             self.returns[-1] = next_value
+        #             for step in reversed(range(self.rewards.size(0))):
+        #                 self.returns[step] = (self.returns[step + 1] * gamma * self.masks[step + 1] + self.rewards[
+        #                     step]) * self.bad_masks[step + 1] + (1 - self.bad_masks[step + 1]) * self.value_preds[step]
+        #     else:
+        #         if use_gae:
+        #             self.value_preds[-1] = next_value
+        #             gae = 0
+        #             for step in reversed(range(self.rewards.size(0))):
+        #                 delta = self.rewards[step] + gamma * self.value_preds[step + 1] * self.masks[step + 1] - \
+        #                         self.value_preds[step]
+        #                 gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
+        #                 self.returns[step] = gae + self.value_preds[step]
+        #         else:
+        #             self.returns[-1] = next_value
+        #             for step in reversed(range(self.rewards.size(0))):
+        #                 self.returns[step] = self.returns[step + 1] * gamma * self.masks[step + 1] + self.rewards[step]
 
     def feed_forward_generator(self,
                                advantages,

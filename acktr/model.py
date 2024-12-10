@@ -4,6 +4,12 @@ import torch.nn as nn
 from acktr.distributions import Bernoulli, Categorical, DiagGaussian
 from acktr.utils import init
 from acktr.distributions import FixedCategorical
+from acktr import gru
+import sys
+
+
+
+
 
 
 class Flatten(nn.Module):
@@ -24,7 +30,7 @@ class Policy(nn.Module):
                 base = CNNBase
                 print('cnnbase')
             elif len(obs_shape) == 1:
-                base = CNNPro
+                base = CNNProGru
                 print('cnnpro')
             else:
                 raise NotImplementedError
@@ -67,6 +73,8 @@ class Policy(nn.Module):
         else:
             
             action = dist.sample()
+        # print("Action:", action)
+        # print("Action shape:", action.shape)
 
         action_log_probs = dist.log_probs(action)
 
@@ -95,14 +103,19 @@ class Policy(nn.Module):
 
 
 
-    def evaluate_actions(self, inputs, rnn_hxs, masks, action, location_masks):
+    def evaluate_actions(self, inputs, rnn_hxs, masks, action, location_masks,lossmask):
         print('评估动作')
         value, actor_features, rnn_hxs, graph = self.base(inputs, rnn_hxs, masks)
+        print("actor_features shape:",actor_features.shape )
+        actor_features = actor_features * lossmask
+        print("actor-feartures dama")
+        
         dist, bad_prob, mask_dist = self.dist(actor_features, location_masks)
         action_log_probs = dist.log_probs(action)
         # dist_entropy = dist.entropy().mean()
         dist_entropy = dist.entropy()
-
+        # 打印 dist_entropy 的形状
+        print("dist_entropy shape:", dist_entropy.shape)
 
         return value, action_log_probs, dist_entropy, rnn_hxs, bad_prob, graph
 
@@ -241,9 +254,93 @@ class MLPBase(NNBase):
         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
 
 
-class CNNPro(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=256, args=None):
-        super(CNNPro, self).__init__(recurrent, num_inputs, hidden_size, args)
+# class CNNPro(NNBase):
+#     def __init__(self, num_inputs, recurrent=False, hidden_size=256, args=None):
+#         super(CNNPro, self).__init__(recurrent, num_inputs, hidden_size, args)
+#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0),
+#                                nn.init.calculate_gain('relu'))
+#         self.args = args
+#         self.share = nn.Sequential(
+#             init_(nn.Conv2d(args.channel, 64, 3, stride=1, padding=1)),
+#             nn.ReLU(),
+#             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+#             nn.ReLU(),
+#             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+#             nn.ReLU(),
+#             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+#             nn.ReLU(),
+#             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+#             nn.ReLU(),
+#                     # 新增的两层
+#             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+#             nn.ReLU(),
+#             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+#             nn.ReLU(),
+#         )
+#         pred_len = args.container_size[0] * args.container_size[1]
+#         if args.enable_rotation:
+#             pred_len = pred_len * 2
+
+#         self.mask = nn.Sequential(
+#             init_(nn.Conv2d(64, 8, 1, stride=1)),
+#             nn.ReLU(),
+#             Flatten(),
+#             init_(nn.Linear(8 * args.pallet_size * args.pallet_size, hidden_size)),
+#             nn.ReLU(),
+#             init_(nn.Linear(hidden_size, pred_len)),
+#             nn.ReLU(),
+#         )
+
+#         self.actor = nn.Sequential(
+#             init_(nn.Conv2d(64, 8, 1, stride=1)),
+#             nn.ReLU(),
+#             Flatten(),
+#             init_(nn.Linear(8 * args.pallet_size * args.pallet_size, hidden_size)),
+#             nn.ReLU(),
+#         )
+
+
+#         #  # Replace the actor part with GRU 这的gru 就是放在Flatten(), 后面 可以尝试
+#         # self.actorgru_gru = nn.GRU(input_size=8 * args.pallet_size * args.pallet_size, hidden_size=hidden_size, batch_first=True)
+#         # self.actorgru_linear = nn.Sequential(
+#         #     init_(nn.Linear(hidden_size, hidden_size)),
+#         #     nn.ReLU(),
+#         # )
+
+#         self.critic = nn.Sequential(
+#             init_(nn.Conv2d(64, 4, 1, stride=1)),
+#             nn.ReLU(),
+#             Flatten(),
+#             init_(nn.Linear(4 * args.pallet_size * args.pallet_size, hidden_size)),
+#             nn.ReLU(),
+#         )
+#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
+#         self.train()
+
+#     def forward(self, inputs, rnn_hxs, masks):
+#         x = inputs.reshape((-1, self.args.channel, self.args.pallet_size, self.args.pallet_size))
+#         assert not self.is_recurrent
+#         share = self.share(x)
+#        # print(f"share.size(0): {share.size(0)}")
+
+#         #  # Prepare input for GRU actor network
+#         # seq_len = share.size(0)  # Dynamically determine sequence length
+#         # gru_input = share.view(1, seq_len, -1)  # Reshape to (batch_size=1, seq_len, input_size)
+#         # gru_output, actorrnn_hxs = self.actorgru_gru(gru_input, actorrnn_hxs)  # Run GRU
+#         # hidden_actor = self.actorgru_linear(gru_output)  # Pass through linear layer, take last time step
+
+
+#         hidden_critic = self.critic(share)
+#         hidden_actor = self.actor(share)
+#         pred_mask = self.mask(share)
+#         cl = self.critic_linear(hidden_critic)
+#         return cl, hidden_actor, rnn_hxs, pred_mask
+
+
+#下面是gru的情况
+class CNNProGru(NNBase):
+    def __init__(self, num_inputs, recurrent=True, hidden_size=256, args=None):
+        super(CNNProGru, self).__init__(recurrent, num_inputs, hidden_size, args)
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0),
                                nn.init.calculate_gain('relu'))
         self.args = args
@@ -254,6 +351,11 @@ class CNNPro(NNBase):
             nn.ReLU(),
             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
             nn.ReLU(),
+            init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+            nn.ReLU(),
+            init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+            nn.ReLU(),
+                    # 新增的两层
             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
             nn.ReLU(),
             init_(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
@@ -273,21 +375,39 @@ class CNNPro(NNBase):
             nn.ReLU(),
         )
 
+ # 1. 卷积部分
         self.actor = nn.Sequential(
             init_(nn.Conv2d(64, 8, 1, stride=1)),
             nn.ReLU(),
-            Flatten(),
-            init_(nn.Linear(8 * args.pallet_size * args.pallet_size, hidden_size)),
-            nn.ReLU(),
+            Flatten()            
         )
+            
+            # 2. GRU部分
+        self._gru = gru.GRU(8 * args.pallet_size * args.pallet_size, hidden_size)
+
+        
+
+#         self.actor = nn.Sequential(
+#             init_(nn.Conv2d(64, 8, 1, stride=1)),
+#             nn.ReLU(),
+#             Flatten(),
+#             init_(nn.Linear(8 * args.pallet_size * args.pallet_size, 512)),
+#             nn.ReLU(),
+#         )
+
+       # # self._gru = gru.GRU(512, hidden_size)  # 在这里加入GRU
 
 
-        #  # Replace the actor part with GRU
-        # self.actorgru_gru = nn.GRU(input_size=8 * args.pallet_size * args.pallet_size, hidden_size=hidden_size, batch_first=True)
-        # self.actorgru_linear = nn.Sequential(
-        #     init_(nn.Linear(hidden_size, hidden_size)),
-        #     nn.ReLU(),
-        # )
+
+
+
+
+#         #  # Replace the actor part with GRU
+#         # self.actorgru_gru = nn.GRU(input_size=8 * args.pallet_size * args.pallet_size, hidden_size=hidden_size, batch_first=True)
+#         # self.actorgru_linear = nn.Sequential(
+#         #     init_(nn.Linear(hidden_size, hidden_size)),
+#         #     nn.ReLU(),
+#         # )
 
         self.critic = nn.Sequential(
             init_(nn.Conv2d(64, 4, 1, stride=1)),
@@ -301,19 +421,20 @@ class CNNPro(NNBase):
 
     def forward(self, inputs, rnn_hxs, masks):
         x = inputs.reshape((-1, self.args.channel, self.args.pallet_size, self.args.pallet_size))
-        assert not self.is_recurrent
+        
         share = self.share(x)
-       # print(f"share.size(0): {share.size(0)}")
-
-        #  # Prepare input for GRU actor network
-        # seq_len = share.size(0)  # Dynamically determine sequence length
-        # gru_input = share.view(1, seq_len, -1)  # Reshape to (batch_size=1, seq_len, input_size)
-        # gru_output, actorrnn_hxs = self.actorgru_gru(gru_input, actorrnn_hxs)  # Run GRU
-        # hidden_actor = self.actorgru_linear(gru_output)  # Pass through linear layer, take last time step
-
-
-        hidden_critic = self.critic(share)
-        hidden_actor = self.actor(share)
         pred_mask = self.mask(share)
+        hidden_critic = self.critic(share)
         cl = self.critic_linear(hidden_critic)
+       
+
+
+        # actor分支
+        hidden_actor = self.actor(share)  # 输出形状: (seq_len * batch_size, 512)
+        
+        
+        hidden_actor, rnn_hxs = self._gru(hidden_actor, rnn_hxs, masks)
+       
+
+       
         return cl, hidden_actor, rnn_hxs, pred_mask

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 #SBATCH --job-name=aqy_testt      # 作业名称
-#SBATCH --output=output3        # 输出文件
-#SBATCH --error=error_log.txt    # 错误日志
+#SBATCH --output=6output        # 输出文件
+#SBATCH --error=6mistakeslog  # 错误日志 cat mistakeslog.txt
 #SBATCH --ntasks=1               # 任务数
-#SBATCH --cpus-per-task=4        # 申请 4 个 CPU 核心
-#SBATCH --time=01:00:00          # 运行时间限制
-#SBATCH --gres=gpu:1             # 申请一个 GPU
-
+#SBATCH --cpus-per-task=5      # 申请 4 个 CPU 核心
+#SBATCH --time=00:30:00          # 运行时间限制
+#SBATCH --gres=gpu:1             # 申请一个 GPU  squeue -u $USER
+#SBATCH --partition=minor
 
 # 初始化环境，确保 conda 可用
 source ~/.bashrc 
@@ -27,6 +27,6 @@ nvidia-smi
 
 # python main.py --mode train 
 
-python main.py --mode train --use-cuda 
+python -u 6main.py --mode train --use-cuda 
 
 

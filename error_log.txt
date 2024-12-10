@@ -1,1 +1,0 @@
-slurmstepd: error: *** JOB 24657 ON worker-1 CANCELLED AT 2024-11-19T18:02:30 DUE TO TIME LIMIT ***
